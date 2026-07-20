@@ -14,18 +14,18 @@
         { "description": "One-shot mode: `vac slides video --avatar-id ...` runs the avatar overlay as an integrated final pipeline stage" }
       ],
       "added": [
-        { "description": "`vac slides video` avatar flags (`--avatar-id`, `--avatar-provider`, `--avatar-diameter`, `--avatar-position`, `--avatar-border`, ...) that run generation + composition as an integrated final stage" },
-        { "description": "`vac avatar generate` command: narration audio (file, manifest, or hosted URL) to presenter video via an OmniAvatar render provider, with content-addressed caching" },
-        { "description": "`vac avatar compose` command: FFmpeg circular mask overlay of the presenter video onto a slides video, with position/diameter/margin/border options and authoritative narration audio mapping" },
-        { "description": "`pkg/avatar` package: `Generate` (provider-agnostic generation with upload feature-detection and caching), `ConcatManifestAudio`, and `ConcatAudioFiles` (concatenate per-slide narration so lip-sync matches the final timeline)" },
-        { "description": "`pkg/video.OverlayAvatar` with `OverlayOptions` for circle-masked corner overlays" },
-        { "description": "`orchestrator.AvatarConfig` integrating the overlay into the slides pipeline (upload-capable providers only)" }
+        { "description": "`vac slides video` avatar flags (`--avatar-id`, `--avatar-provider`, `--avatar-diameter`, `--avatar-position`, `--avatar-border`, ...) that run generation + composition as an integrated final stage", "commit": "a0a9d05" },
+        { "description": "`vac avatar generate` command: narration audio (file, manifest, or hosted URL) to presenter video via an OmniAvatar render provider, with content-addressed caching", "commit": "3cfd6a5" },
+        { "description": "`vac avatar compose` command: FFmpeg circular mask overlay of the presenter video onto a slides video, with position/diameter/margin/border options and authoritative narration audio mapping", "commit": "3cfd6a5" },
+        { "description": "`pkg/avatar` package: `Generate` (provider-agnostic generation with upload feature-detection and caching), `ConcatManifestAudio`, and `ConcatAudioFiles` (concatenate per-slide narration so lip-sync matches the final timeline)", "commit": "f722632" },
+        { "description": "`pkg/video.OverlayAvatar` with `OverlayOptions` for circle-masked corner overlays", "commit": "9ba1b63" },
+        { "description": "`orchestrator.AvatarConfig` integrating the overlay into the slides pipeline (upload-capable providers only)", "commit": "a0a9d05" }
       ],
       "dependencies": [
-        { "description": "Add `github.com/plexusone/omniavatar` and `github.com/plexusone/omniavatar-core` (render providers); pinned to v0.1.0 pending the v0.2.0 releases, with local development via go.work" }
+        { "description": "Add `github.com/plexusone/omniavatar` v0.2.0 and `github.com/plexusone/omniavatar-core` v0.3.0 (render providers); adds the render surface (HeyGen/Tavus/bitHuman) plus the transitive `heygen-go` v0.2.0, `tavus-go` v0.3.0, and `bithuman-go` v0.2.0", "commit": "f920dfb" }
       ],
       "documentation": [
-        { "description": "README, CLI reference, and avatar-presenter guide: one-shot and decoupled avatar workflows" }
+        { "description": "README, CLI reference, and avatar-presenter guide: one-shot and decoupled avatar workflows", "commit": "d9e0d29" }
       ]
     },
     {
