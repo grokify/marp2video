@@ -16,6 +16,7 @@ marp2video
 
 # Go workspace file
 go.work
+go.work.sum
 
 # Temporary files
 /tmp/
