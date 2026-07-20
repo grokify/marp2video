@@ -1,4 +1,4 @@
-# vac
+# VideoAsCode (vac)
 
 **Transform Marp Markdown Presentations into Videos with AI Voiceovers**
 
