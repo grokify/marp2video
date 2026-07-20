@@ -7,6 +7,28 @@
   "maintainers": ["grokify", "johncwang@gmail.com"],
   "releases": [
     {
+      "version": "v0.7.0",
+      "date": "2026-07-16",
+      "highlights": [
+        { "description": "Optional avatar presenter overlay: generate a talking-head video from narration audio via OmniAvatar (HeyGen, Tavus, bitHuman) and composite it as a circular overlay onto slides videos" },
+        { "description": "One-shot mode: `vac slides video --avatar-id ...` runs the avatar overlay as an integrated final pipeline stage" }
+      ],
+      "added": [
+        { "description": "`vac slides video` avatar flags (`--avatar-id`, `--avatar-provider`, `--avatar-diameter`, `--avatar-position`, `--avatar-border`, ...) that run generation + composition as an integrated final stage" },
+        { "description": "`vac avatar generate` command: narration audio (file, manifest, or hosted URL) to presenter video via an OmniAvatar render provider, with content-addressed caching" },
+        { "description": "`vac avatar compose` command: FFmpeg circular mask overlay of the presenter video onto a slides video, with position/diameter/margin/border options and authoritative narration audio mapping" },
+        { "description": "`pkg/avatar` package: `Generate` (provider-agnostic generation with upload feature-detection and caching), `ConcatManifestAudio`, and `ConcatAudioFiles` (concatenate per-slide narration so lip-sync matches the final timeline)" },
+        { "description": "`pkg/video.OverlayAvatar` with `OverlayOptions` for circle-masked corner overlays" },
+        { "description": "`orchestrator.AvatarConfig` integrating the overlay into the slides pipeline (upload-capable providers only)" }
+      ],
+      "dependencies": [
+        { "description": "Add `github.com/plexusone/omniavatar` and `github.com/plexusone/omniavatar-core` (render providers); pinned to v0.1.0 pending the v0.2.0 releases, with local development via go.work" }
+      ],
+      "documentation": [
+        { "description": "README, CLI reference, and avatar-presenter guide: one-shot and decoupled avatar workflows" }
+      ]
+    },
+    {
       "version": "v0.6.0",
       "date": "2026-06-28",
       "highlights": [

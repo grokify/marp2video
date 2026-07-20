@@ -24,7 +24,8 @@
 | Service | Required | Purpose |
 |---------|----------|---------|
 | **ElevenLabs** | Yes | Text-to-speech generation |
-| **HeyGen** | Optional | AI avatar integration (future) |
+| **Deepgram** | Optional | Subtitle generation (speech-to-text) |
+| **HeyGen** / **bitHuman** / **Tavus** | Optional | AI avatar presenter overlay (`vac avatar`, `--avatar-id`) |
 
 ## Platform-Specific Notes
 

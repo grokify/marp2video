@@ -1,6 +1,7 @@
 # Pipeline Overview
 
-vac uses a 6-step pipeline to convert presentations to video.
+vac uses a 6-step pipeline to convert presentations to video, plus an
+optional avatar presenter overlay stage.
 
 ## Pipeline Diagram
 
@@ -61,6 +62,15 @@ vac uses a 6-step pipeline to convert presentations to video.
 │  • For Udemy courses: --output-individual ./lectures/                   │
 │  • Output: lectures/slide_000.mp4, slide_001.mp4, ...                   │
 └─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  STEP 7: Avatar Presenter Overlay (Optional, --avatar-id)              │
+│  • Concatenate slide narration into one track (matches the timeline)    │
+│  • Generate a talking-head video via OmniAvatar (HeyGen / bitHuman)     │
+│  • Composite the circle overlay onto output.mp4 with ffmpeg             │
+│  • Output: output.mp4 (with presenter)                                  │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Step Details
@@ -73,6 +83,7 @@ vac uses a 6-step pipeline to convert presentations to video.
 | 4 | `pkg/video` | Rod + ffmpeg | HTML + MP3 | `slide_*.mp4` |
 | 5 | `pkg/video` | ffmpeg | `slide_*.mp4` | `output.mp4` |
 | 6 | `pkg/orchestrator` | Go | `slide_*.mp4` | Individual files |
+| 7 | `pkg/avatar`, `pkg/video` | OmniAvatar + ffmpeg | `output.mp4` + narration | `output.mp4` (with presenter) |
 
 ## Working Directory
 

@@ -15,6 +15,7 @@ vac is a command-line tool that automates the conversion of [Marp](https://marp.
 - :material-transition: **Crossfade transitions** between slides
 - :material-subtitles: **Subtitle generation** from voiceover timing or speech-to-text
 - :material-cached: **Audio caching** for faster iterations without re-incurring TTS costs
+- :material-account-circle: **Avatar presenter overlay** (optional) via [OmniAvatar](https://github.com/plexusone/omniavatar) — HeyGen, Tavus, bitHuman
 
 ## Quick Example
 

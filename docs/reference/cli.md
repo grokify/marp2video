@@ -14,6 +14,10 @@ vac
 ├── browser            # Browser automation recordings
 │   ├── video          # Record with TTS voiceover
 │   └── record         # Silent recording (no audio)
+├── avatar             # Talking-head presenter overlay (optional)
+│   ├── list-avatars   # List provider avatar IDs (for --avatar-id)
+│   ├── generate       # Narration audio -> presenter video
+│   └── compose        # Overlay presenter circle onto slides video
 └── subtitle           # Generate subtitles from audio
 ```
 
@@ -47,6 +51,30 @@ vac slides video [flags]
 | `--workdir` | string | system temp | Working directory for temp files |
 | `--check` | bool | | Verify dependencies and exit |
 
+#### Avatar overlay flags (optional)
+
+Setting `--avatar-id` enables an integrated talking-head presenter overlay
+as a final pipeline stage — the one-shot equivalent of running
+`vac avatar generate` + `vac avatar compose` by hand. The narration is
+concatenated from the slide audio and uploaded, so the provider must
+support audio upload (`heygen` or `bithuman`); for Tavus, use the
+decoupled `vac avatar generate --audio-url` flow.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--avatar-id` | string | | Enable overlay with this avatar identity (heygen `avatar_id` / bithuman `agent_id`) |
+| `--avatar-provider` | string | `heygen` | Avatar provider: `heygen` or `bithuman` |
+| `--avatar-api-key` | string | from env | Avatar provider API key |
+| `--avatar-ext` | key=value | | Provider-specific request option (repeatable) |
+| `--avatar-poll` | duration | `5s` | Job status poll interval |
+| `--avatar-no-cache` | bool | `false` | Disable presenter video caching |
+| `--avatar-diameter` | int | `320` | Circle diameter in pixels |
+| `--avatar-position` | string | `bottom-right` | `bottom-right`, `bottom-left`, `top-right`, `top-left` |
+| `--avatar-margin-x` | int | `56` | Horizontal margin in pixels |
+| `--avatar-margin-y` | int | `56` | Vertical margin in pixels |
+| `--avatar-border` | int | `0` | Border ring width in pixels (0 disables) |
+| `--avatar-border-color` | string | `white` | Border ring color |
+
 ### Examples
 
 ```bash
@@ -63,6 +91,11 @@ vac slides video --input slides.md --output video.mp4 \
 # Generate individual slide videos for Udemy
 vac slides video --input slides.md --output combined.mp4 \
   --output-individual ./lectures/
+
+# One-shot with an avatar presenter overlay (HeyGen)
+export HEYGEN_API_KEY=...
+vac slides video --input slides.md --manifest audio/en-US/manifest.json \
+  --output final.mp4 --avatar-id <avatar-id> --avatar-border 6
 
 # Check dependencies
 vac slides video --check
@@ -271,12 +304,143 @@ vac subtitle --audio audio/en-US/ --individual
 
 ---
 
+## avatar list-avatars
+
+List avatar IDs available from a provider, for use as `--avatar-id`.
+Provider avatar IDs are provider-native and not always the same as the
+IDs returned by a provider's dashboard or other list endpoints — for
+HeyGen, `--avatar-id` needs a **v2 avatar ID** (e.g.
+`Abigail_expressive_2024112501`), which this command returns.
+
+```bash
+vac avatar list-avatars [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `-p, --provider` | string | `heygen` | Avatar provider: `heygen`, `tavus`, or `bithuman` |
+| `-k, --api-key` | string | from env | Provider API key |
+| `--search` | string | | Filter by ID or name substring (case-insensitive) |
+| `--limit` | int | `50` | Maximum avatars to print (0 = all) |
+
+### Examples
+
+```bash
+# Find HeyGen avatars matching "abigail"
+vac avatar list-avatars --provider heygen --search abigail
+
+# Dump the full catalog
+vac avatar list-avatars --provider heygen --limit 0 > avatars.txt
+```
+
+!!! note "Provider support"
+    Listing requires a provider that implements avatar discovery
+    (`omniavatar.AvatarLister`). HeyGen is supported; the HeyGen catalog
+    is large, so the first response can take a moment.
+
+---
+
+## avatar generate
+
+Generate a talking-head presenter video from narration audio using an AI
+avatar provider ([OmniAvatar](https://github.com/plexusone/omniavatar):
+HeyGen, Tavus, or bitHuman). Optional — presentations render exactly as
+before unless the avatar commands are used.
+
+```bash
+vac avatar generate [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `-m, --manifest` | string | | Audio manifest from `vac slides tts` (concatenated with pause gaps) |
+| `--audio` | string | | Narration audio file (MP3 recommended) |
+| `--audio-url` | string | | Pre-hosted narration audio URL |
+| `-p, --provider` | string | `heygen` | Avatar provider: `heygen`, `tavus`, or `bithuman` |
+| `--avatar-id` | string | *required* | Avatar identity (heygen avatar_id / tavus replica_id / bithuman agent_id) |
+| `-k, --api-key` | string | from env | Provider API key |
+| `-o, --output` | string | `presenter.mp4` | Output presenter video file |
+| `--poll` | duration | `5s` | Job status poll interval |
+| `--cache-dir` | string | user cache dir | Presenter video cache directory |
+| `--no-cache` | bool | `false` | Disable presenter video caching |
+| `--ext` | key=value | | Provider-specific request option (repeatable) |
+
+Exactly one of `--manifest`, `--audio`, or `--audio-url` is required.
+With `--manifest`, per-slide audio is concatenated **including pause
+gaps** so avatar lip-sync matches the final video timeline. Generated
+videos are cached by narration content + avatar configuration.
+
+!!! note "Provider limitations"
+    Tavus has no audio upload API and requires `--audio-url`. HeyGen's
+    upload API documents MP3 (`audio/mpeg`) as its supported audio type.
+
+### Examples
+
+```bash
+# Generate presenter video from the TTS manifest
+vac avatar generate --manifest audio/en-US/manifest.json \
+  --provider heygen --avatar-id <avatar-id> --output presenter.mp4
+
+# HeyGen test mode (watermarked, no credits)
+vac avatar generate --audio narration.mp3 --provider heygen \
+  --avatar-id <avatar-id> --ext test=true --output presenter.mp4
+```
+
+---
+
+## avatar compose
+
+Composite a talking-head presenter video as a circular overlay onto a
+slides video. The circle mask is applied locally with FFmpeg, so output
+is identical across avatar providers. The presenter video's own audio is
+always discarded.
+
+```bash
+vac avatar compose [flags]
+```
+
+### Flags
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--slides` | string | *required* | Slides (base) video file |
+| `--avatar` | string | *required* | Presenter (avatar) video file |
+| `--audio` | string | | Narration audio to use as the authoritative audio track |
+| `-o, --output` | string | `final.mp4` | Output video file |
+| `--diameter` | int | `320` | Avatar circle diameter in pixels |
+| `--position` | string | `bottom-right` | `bottom-right`, `bottom-left`, `top-right`, `top-left` |
+| `--margin-x` | int | `56` | Horizontal margin in pixels |
+| `--margin-y` | int | `56` | Vertical margin in pixels |
+| `--border` | int | `0` | Border ring width in pixels (0 disables) |
+| `--border-color` | string | `white` | Border ring color (ffmpeg color name or 0xRRGGBB) |
+
+### Examples
+
+```bash
+# Composite with narration as the authoritative audio track
+vac avatar compose --slides slides.mp4 --avatar presenter.mp4 \
+  --audio narration.mp3 --output final.mp4
+
+# Smaller circle, bottom-left, with a border ring
+vac avatar compose --slides slides.mp4 --avatar presenter.mp4 \
+  --output final.mp4 --diameter 280 --position bottom-left --border 6
+```
+
+---
+
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
 | `ELEVENLABS_API_KEY` | ElevenLabs API key for TTS |
 | `DEEPGRAM_API_KEY` | Deepgram API key for TTS/STT |
+| `HEYGEN_API_KEY` | HeyGen API key for avatar generation |
+| `TAVUS_API_KEY` | Tavus API key for avatar generation |
+| `BITHUMAN_API_KEY` | bitHuman API key for avatar generation |
 
 ---
 

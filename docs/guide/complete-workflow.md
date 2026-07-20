@@ -179,6 +179,24 @@ vac video --input slides.md --manifest audio/en-US/manifest.json \
   --output video/presentation.mp4 --output-individual video/slides/
 ```
 
+### Optional: Add an Avatar Presenter
+
+Add a talking-head presenter overlay in one shot by setting `--avatar-id`.
+The narration is concatenated from the slide audio, a presenter video is
+generated via [OmniAvatar](https://github.com/plexusone/omniavatar), and
+the circle is composited onto the output automatically:
+
+```bash
+export HEYGEN_API_KEY="your-key"
+vac slides video --input slides.md --manifest audio/en-US/manifest.json \
+  --output video/presentation.mp4 --avatar-id <avatar-id> --avatar-border 6
+```
+
+The provider must support audio upload (`heygen` or `bithuman`); for Tavus,
+use the decoupled `vac avatar generate --audio-url` flow. See the
+[Avatar Presenter guide](avatar-presenter.md) for layout options, caching,
+and the standalone `vac avatar generate` / `vac avatar compose` commands.
+
 ## Step 4: Generate Subtitles (STT)
 
 Create subtitles from the audio using speech-to-text:

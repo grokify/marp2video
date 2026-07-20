@@ -28,9 +28,13 @@ vac/
 │   │   └── marp_parser_test.go
 │   ├── tts/            # Text-to-speech generation
 │   │   └── elevenlabs.go
-│   ├── video/          # Video recording and combining
+│   ├── avatar/         # Optional avatar presenter generation (OmniAvatar)
+│   │   ├── generate.go
+│   │   └── concat.go
+│   ├── video/          # Video recording, combining, and avatar overlay
 │   │   ├── recorder.go
 │   │   ├── combiner.go
+│   │   ├── overlay.go
 │   │   └── combiner_test.go
 │   └── transcript/     # Multi-language transcript types
 │       ├── transcript.go
