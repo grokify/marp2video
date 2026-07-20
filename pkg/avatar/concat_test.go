@@ -9,26 +9,35 @@ import (
 )
 
 func TestManifestSegments(t *testing.T) {
+	// Use OS-appropriate absolute paths: a Unix-style "/abs/..." literal is
+	// not absolute on Windows (filepath.IsAbs needs a volume like "C:\"),
+	// which would make the "absolute path unchanged" assertion fail there.
+	baseDir := t.TempDir()
+	absAudio, err := filepath.Abs(filepath.Join("abs", "slide-001.mp3"))
+	if err != nil {
+		t.Fatalf("filepath.Abs: %v", err)
+	}
+
 	manifest := &tts.Manifest{
 		Version: "1.0",
 		Slides: []tts.SlideAudio{
 			{Index: 0, AudioFile: "slide-000.mp3", AudioDuration: 4000, PauseDuration: 1500, TotalDuration: 5500},
-			{Index: 1, AudioFile: "/abs/slide-001.mp3", AudioDuration: 3000, TotalDuration: 3000},
+			{Index: 1, AudioFile: absAudio, AudioDuration: 3000, TotalDuration: 3000},
 			// TotalDuration < AudioDuration must not produce a negative pad.
 			{Index: 2, AudioFile: "slide-002.mp3", AudioDuration: 4000, TotalDuration: 3000},
 		},
 	}
 
-	segments := manifestSegments(manifest, "/base")
+	segments := manifestSegments(manifest, baseDir)
 
-	if want := filepath.Join("/base", "slide-000.mp3"); segments[0].path != want {
+	if want := filepath.Join(baseDir, "slide-000.mp3"); segments[0].path != want {
 		t.Errorf("segment[0].path = %q, want %q", segments[0].path, want)
 	}
 	if segments[0].padMs != 1500 {
 		t.Errorf("segment[0].padMs = %d, want 1500", segments[0].padMs)
 	}
-	if segments[1].path != "/abs/slide-001.mp3" {
-		t.Errorf("segment[1].path = %q, want absolute path unchanged", segments[1].path)
+	if segments[1].path != absAudio {
+		t.Errorf("segment[1].path = %q, want absolute path %q unchanged", segments[1].path, absAudio)
 	}
 	if segments[1].padMs != 0 {
 		t.Errorf("segment[1].padMs = %d, want 0", segments[1].padMs)
