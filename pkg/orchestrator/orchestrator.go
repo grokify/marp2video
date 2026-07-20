@@ -12,11 +12,13 @@ import (
 
 	"github.com/grokify/mogo/fmt/progress"
 	"github.com/grokify/videoascode/pkg/audio"
+	"github.com/grokify/videoascode/pkg/avatar"
 	omnitts "github.com/grokify/videoascode/pkg/omnivoice/tts"
 	"github.com/grokify/videoascode/pkg/parser"
 	"github.com/grokify/videoascode/pkg/renderer"
 	"github.com/grokify/videoascode/pkg/tts"
 	"github.com/grokify/videoascode/pkg/video"
+	"github.com/plexusone/omniavatar-core/render"
 )
 
 // writeFileSecure validates that path contains no ".." traversal sequences,
@@ -39,11 +41,38 @@ type Config struct {
 	Width               int
 	Height              int
 	FrameRate           int
-	OutputIndividualDir string    // Directory for individual slide videos (Udemy)
-	TransitionDuration  float64   // Duration of transitions between slides in seconds
-	ScreenDevice        string    // Screen capture device (macOS, auto-detected if empty)
-	AudioManifest       string    // Path to audio manifest file (from 'marp2video tts')
-	ProgressWriter      io.Writer // Writer for progress output (nil to disable)
+	OutputIndividualDir string        // Directory for individual slide videos (Udemy)
+	TransitionDuration  float64       // Duration of transitions between slides in seconds
+	ScreenDevice        string        // Screen capture device (macOS, auto-detected if empty)
+	AudioManifest       string        // Path to audio manifest file (from 'marp2video tts')
+	ProgressWriter      io.Writer     // Writer for progress output (nil to disable)
+	Avatar              *AvatarConfig // Optional talking-head presenter overlay (nil to disable)
+}
+
+// AvatarConfig configures the optional avatar presenter overlay stage.
+// When set, after the slides video is combined, narration audio is
+// concatenated, a presenter video is generated via the render provider,
+// and the presenter circle is composited onto the final output.
+type AvatarConfig struct {
+	// Provider is the constructed OmniAvatar render provider.
+	// The provider must support audio upload (render.AudioUploader),
+	// since the orchestrator generates narration locally.
+	Provider render.Provider
+
+	// AvatarID identifies the presenter with the provider.
+	AvatarID string
+
+	// Extensions holds provider-specific request options.
+	Extensions map[string]any
+
+	// PollInterval is the generation job status poll interval.
+	PollInterval time.Duration
+
+	// CacheDir enables presenter video caching (empty disables).
+	CacheDir string
+
+	// Overlay configures the circular overlay composition.
+	Overlay video.OverlayOptions
 }
 
 // Orchestrator coordinates the entire video generation process
@@ -80,12 +109,17 @@ func NewOrchestrator(config Config) *Orchestrator {
 	return o
 }
 
-// totalStages returns the number of stages (5 or 6 if exporting individual videos)
+// totalStages returns the number of pipeline stages: 5 base, plus one each
+// for individual-video export and the avatar presenter overlay.
 func (o *Orchestrator) totalStages() int {
+	n := 5
 	if o.config.OutputIndividualDir != "" {
-		return 6
+		n++
 	}
-	return 5
+	if o.config.Avatar != nil {
+		n++
+	}
+	return n
 }
 
 // updateProgress updates the progress display if enabled
@@ -256,6 +290,10 @@ func (o *Orchestrator) Process(ctx context.Context) error {
 
 	audioPlayer := audio.NewPlayer()
 	videoFiles := make([]string, 0, len(presentation.Slides))
+	// paddedAudioFiles tracks per-slide padded audio in the same order as
+	// videoFiles, so the avatar stage can concatenate a narration track
+	// that matches the combined video's timeline exactly.
+	paddedAudioFiles := make([]string, 0, len(presentation.Slides))
 
 	// Create video for each slide with audio
 	for i := range presentation.Slides {
@@ -285,24 +323,31 @@ func (o *Orchestrator) Process(ctx context.Context) error {
 		}
 
 		videoFiles = append(videoFiles, videoPath)
+		paddedAudioFiles = append(paddedAudioFiles, paddedAudioPath)
 	}
 	o.updateProgress(4, "Creating slide videos", numSlides, numSlides, true, fmt.Sprintf("%d videos", len(videoFiles)))
 
-	// Step 5: Combine all videos (for YouTube)
+	// Step 5: Combine all videos (for YouTube).
+	// When an avatar overlay is requested, combine to an intermediate file
+	// so the overlay stage can read it and write the final output.
 	combineStage := 5
+	combineTarget := o.config.OutputFile
+	if o.config.Avatar != nil {
+		combineTarget = filepath.Join(videoDir, "slides_combined.mp4")
+	}
 	o.updateProgress(combineStage, "Combining videos", 0, 0, false, fmt.Sprintf("%d videos", len(videoFiles)))
 	combiner := video.NewCombiner(videoDir)
 
 	var combineErr error
 	if o.config.TransitionDuration > 0 {
-		combineErr = combiner.CombineVideosWithTransitions(ctx, videoFiles, o.config.OutputFile, o.config.TransitionDuration)
+		combineErr = combiner.CombineVideosWithTransitions(ctx, videoFiles, combineTarget, o.config.TransitionDuration)
 	} else {
-		combineErr = combiner.CombineVideos(ctx, videoFiles, o.config.OutputFile)
+		combineErr = combiner.CombineVideos(ctx, videoFiles, combineTarget)
 	}
 	if combineErr != nil {
 		return fmt.Errorf("failed to combine videos: %w", combineErr)
 	}
-	o.updateProgress(combineStage, "Combining videos", 0, 0, true, o.config.OutputFile)
+	o.updateProgress(combineStage, "Combining videos", 0, 0, true, combineTarget)
 
 	// Step 6: Save individual videos if requested (for Udemy)
 	if o.config.OutputIndividualDir != "" {
@@ -333,5 +378,63 @@ func (o *Orchestrator) Process(ctx context.Context) error {
 		o.updateProgress(exportStage, "Exporting individual videos", numVideos, numVideos, true, o.config.OutputIndividualDir)
 	}
 
+	// Optional stage: avatar presenter overlay.
+	if o.config.Avatar != nil {
+		if err := o.processAvatar(ctx, combineTarget, paddedAudioFiles); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// processAvatar runs the optional avatar presenter overlay: concatenate
+// narration matching the final timeline, generate the presenter video via
+// the render provider, and composite the presenter circle onto the slides
+// video, writing the final output.
+func (o *Orchestrator) processAvatar(ctx context.Context, slidesVideoPath string, paddedAudioFiles []string) error {
+	av := o.config.Avatar
+
+	stage := 6
+	if o.config.OutputIndividualDir != "" {
+		stage = 7
+	}
+	const steps = 3
+
+	if len(paddedAudioFiles) == 0 {
+		return fmt.Errorf("avatar overlay requires narration audio, but no slides had audio")
+	}
+
+	// Step 1: concatenate per-slide padded audio into one narration track
+	// that matches the combined video's timeline.
+	o.updateProgress(stage, "Adding avatar presenter", 0, steps, false, "concatenating narration...")
+	narrationPath := filepath.Join(o.config.WorkDir, "narration.mp3")
+	if err := avatar.ConcatAudioFiles(ctx, paddedAudioFiles, narrationPath); err != nil {
+		return fmt.Errorf("failed to concatenate narration audio: %w", err)
+	}
+
+	// Step 2: generate the presenter video (cached by narration + config).
+	o.updateProgress(stage, "Adding avatar presenter", 1, steps, false, "generating presenter...")
+	presenterPath := filepath.Join(o.config.WorkDir, "presenter.mp4")
+	if err := avatar.Generate(ctx, presenterPath, avatar.GenerateOptions{
+		Provider:     av.Provider,
+		AvatarID:     av.AvatarID,
+		AudioPath:    narrationPath,
+		Extensions:   av.Extensions,
+		PollInterval: av.PollInterval,
+		CacheDir:     av.CacheDir,
+	}); err != nil {
+		return fmt.Errorf("failed to generate presenter video: %w", err)
+	}
+
+	// Step 3: composite the presenter circle onto the slides video, using
+	// the concatenated narration as the authoritative audio track.
+	o.updateProgress(stage, "Adding avatar presenter", 2, steps, false, "compositing overlay...")
+	overlay := av.Overlay
+	overlay.AudioPath = narrationPath
+	if err := video.OverlayAvatar(ctx, slidesVideoPath, presenterPath, o.config.OutputFile, overlay); err != nil {
+		return fmt.Errorf("failed to composite avatar overlay: %w", err)
+	}
+	o.updateProgress(stage, "Adding avatar presenter", steps, steps, true, o.config.OutputFile)
 	return nil
 }
