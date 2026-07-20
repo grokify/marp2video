@@ -7,8 +7,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grokify/ffutil v0.1.0
 	github.com/grokify/mogo v0.74.6
-	github.com/plexusone/omniavatar v0.1.0 // workspace-overridden; bump to v0.2.0 on release
-	github.com/plexusone/omniavatar-core v0.2.0 // workspace-overridden; bump to v0.3.0 on release
+	github.com/plexusone/omniavatar v0.2.0
+	github.com/plexusone/omniavatar-core v0.3.0
 	github.com/plexusone/omnivoice v0.13.0
 	github.com/plexusone/omnivoice-core v0.15.0
 	github.com/spf13/cobra v1.10.2
@@ -83,9 +83,9 @@ require (
 	github.com/pion/turn/v5 v5.0.12 // indirect
 	github.com/pion/webrtc/v4 v4.2.17 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/plexusone/bithuman-go v0.1.0 // indirect
+	github.com/plexusone/bithuman-go v0.2.0 // indirect
 	github.com/plexusone/elevenlabs-go v0.13.0 // indirect
-	github.com/plexusone/heygen-go v0.1.0 // indirect
+	github.com/plexusone/heygen-go v0.2.0 // indirect
 	github.com/plexusone/ogen-tools v0.3.0 // indirect
 	github.com/plexusone/omni-deepgram v0.7.0 // indirect
 	github.com/plexusone/omni-google v0.7.0 // indirect
@@ -93,7 +93,7 @@ require (
 	github.com/plexusone/omni-telnyx v0.4.0 // indirect
 	github.com/plexusone/omni-twilio v0.9.0 // indirect
 	github.com/plexusone/omnillm-core v0.18.0 // indirect
-	github.com/plexusone/tavus-go v0.2.0 // indirect
+	github.com/plexusone/tavus-go v0.3.0 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.0 // indirect
