@@ -174,11 +174,26 @@ func (b *BrowserSegment) GetStepVoiceovers() []string {
 	return voiceovers
 }
 
-// LimitSteps truncates the steps to the first n steps (for testing)
+// LimitSteps truncates the steps to the first n steps (for testing), and
+// correspondingly truncates any segment-level transcripts to the same n.
+// GetVoiceovers prefers segment-level transcripts over step-embedded
+// voiceovers whenever both are present, so without this, limiting steps had
+// no effect on TTS generation, pacing, or final video duration for
+// transcript-based (multi-language) segments — the full narration was
+// synthesized and timed regardless of --limit-steps.
 func (b *BrowserSegment) LimitSteps(n int) {
-	if n > 0 && n < len(b.steps) {
+	if n <= 0 {
+		return
+	}
+	if n < len(b.steps) {
 		fmt.Printf("Limiting browser segment to first %d of %d steps\n", n, len(b.steps))
 		b.steps = b.steps[:n]
+	}
+	for lang, content := range b.transcripts {
+		if n < len(content.Segments) {
+			content.Segments = content.Segments[:n]
+			b.transcripts[lang] = content
+		}
 	}
 }
 
