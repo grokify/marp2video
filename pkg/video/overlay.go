@@ -45,6 +45,11 @@ type OverlayOptions struct {
 	// that narration audio — not provider-returned audio — is canonical.
 	// When empty, the base video's audio track is passed through.
 	AudioPath string
+
+	// FPS is the frame rate the base video is normalized to before
+	// overlaying, so the avatar's motion isn't frozen between the base
+	// video's (possibly sparse) native frames. Default: 30.
+	FPS int
 }
 
 // applyDefaults fills zero values with defaults.
@@ -63,6 +68,9 @@ func (o *OverlayOptions) applyDefaults() {
 	}
 	if o.BorderColor == "" {
 		o.BorderColor = "white"
+	}
+	if o.FPS <= 0 {
+		o.FPS = 30
 	}
 }
 
@@ -129,7 +137,18 @@ func buildOverlayFilter(opts OverlayOptions) (string, error) {
 			"geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':%s[avatar]",
 		opts.Diameter, opts.Diameter, circleAlpha))
 
-	base := "[0:v]"
+	// The overlay filter emits one output frame per BASE-input frame by
+	// default. Slide/screen-recorded base videos commonly hold a single
+	// frame for a long duration via PTS rather than encoding continuous
+	// frames, which — left unnormalized — makes the overlay filter
+	// composite the (continuously animated) avatar exactly once and then
+	// visually freeze it for the rest of that hold. Forcing a constant
+	// frame rate on the base stream first ensures the overlay filter
+	// samples the avatar's current frame regularly, so its motion (lip
+	// sync) actually shows through.
+	filters = append(filters, fmt.Sprintf("[0:v]fps=%d[base]", opts.FPS))
+
+	base := "[base]"
 	if opts.BorderWidth > 0 {
 		// Draw a solid disc behind the avatar; the visible ring is the
 		// border-width margin around the avatar circle.
