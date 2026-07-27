@@ -70,6 +70,8 @@ nav:
     - Browser Video Recording: guide/browser-video.md
     - Avatar Presenter Overlay: guide/avatar-presenter.md
     - Subtitle Generation: guide/subtitles.md
+    - Pronunciation: guide/pronunciation.md
+    - Local Providers (Offline TTS/STT): guide/local-providers.md
     - Multi-Language Support: guide/multi-language.md
     - Output Options: guide/output-options.md
     - Customization: guide/customization.md

@@ -7,15 +7,16 @@ vac is a command-line tool that automates the conversion of [Marp](https://marp.
 ## Features
 
 - :material-file-document: **Parse Marp presentations** with voiceover in HTML comments or JSON transcripts
-- :material-microphone: **Text-to-speech** using ElevenLabs, Deepgram, and other providers via OmniVoice
+- :material-microphone: **Text-to-speech** using ElevenLabs, Deepgram, local F5-TTS, and other providers via OmniVoice
 - :material-web: **Browser automation** with Rod to display slides and record demos
 - :material-video: **Screen recording** with synchronized audio using ffmpeg
 - :material-earth: **Multi-language support** with BCP-47 locale codes (en-US, en-GB, fr-CA, etc.)
 - :material-television: **Platform-optimized** output for YouTube, Udemy, Coursera
 - :material-transition: **Crossfade transitions** between slides
-- :material-subtitles: **Subtitle generation** from voiceover timing or speech-to-text
+- :material-subtitles: **Subtitle generation** from voiceover timing or speech-to-text (Deepgram or local Whisper)
 - :material-cached: **Audio caching** for faster iterations without re-incurring TTS costs
 - :material-account-circle: **Avatar presenter overlay** (optional) via [OmniAvatar](https://github.com/plexusone/omniavatar) — HeyGen, Tavus, bitHuman
+- :material-shield-lock: **Local, offline TTS & STT** (optional) — F5-TTS + Whisper on Apple Silicon via OmniVoice MLX providers, no API keys or cloud calls
 
 ## Quick Example
 

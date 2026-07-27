@@ -42,7 +42,7 @@ Both providers offer TTS and STT capabilities. You can use either one for both f
 
 - 📝 **Parse Marp presentations** with voiceover in HTML comments
 - 🌐 **JSON transcript support** for multi-language voiceovers
-- 🎙️ **Text-to-speech** via OmniVoice (ElevenLabs, Deepgram)
+- 🎙️ **Text-to-speech** via OmniVoice (ElevenLabs, Deepgram, or local F5-TTS)
 - 🗣️ **Multi-language** support with per-slide voice configuration
 - 🖼️ **Image-based rendering** using Marp PNG export for reliable output
 - 🎬 **Video generation** with synchronized audio using ffmpeg
@@ -52,11 +52,13 @@ Both providers offer TTS and STT capabilities. You can use either one for both f
 - ▶️ **YouTube-ready** combined video output with optional transitions
 - 🎓 **Udemy-ready** individual slide videos for course lectures
 - 🔄 **Decoupled workflow** - generate audio and video separately
-- 📜 **Subtitle generation** - SRT/VTT from audio via OmniVoice (Deepgram STT)
+- 📜 **Subtitle generation** - SRT/VTT from audio via OmniVoice (Deepgram or local Whisper STT)
+- 🗣️ **Pronunciation dictionary** - rewrite brand names/acronyms to a spoken form before TTS, leaving displayed text (subtitles/manifests) unchanged (see [Pronunciation](docs/guide/pronunciation.md))
 - 🌐 **Browser demo recording** - automated browser interactions with voiceover
 - 🎯 **TTS audio caching** - reuse generated audio across runs
 - 🧑‍💼 **Avatar presenter overlay** (optional) - talking-head circle via [OmniAvatar](https://github.com/plexusone/omniavatar) (HeyGen, Tavus, bitHuman)
 - ⚡ **Hardware acceleration** - fast encoding with VideoToolbox (macOS)
+- 🔒 **Local, offline TTS & STT** (optional) - F5-TTS + Whisper on Apple Silicon via [OmniVoice](https://github.com/plexusone/omnivoice-core) MLX providers, no API keys or cloud calls (see [Local Providers](#local-offline-tts--stt-apple-silicon))
 
 ## Installation
 
@@ -84,13 +86,19 @@ Both providers offer TTS and STT capabilities. You can use either one for both f
    npm install -g @marp-team/marp-cli
    ```
 
-4. **ElevenLabs API Key** (for TTS)
+4. **ElevenLabs API Key** (for cloud TTS)
    - Sign up at [ElevenLabs](https://elevenlabs.io/)
    - Get your API key from the dashboard
+   - *Not required if you use the local F5-TTS provider (see below).*
 
-5. **Deepgram API Key** (for subtitle generation)
+5. **Deepgram API Key** (for cloud subtitle generation)
    - Sign up at [Deepgram](https://deepgram.com/)
    - Get your API key from the console
+   - *Not required if you use the local Whisper provider (see below).*
+
+6. **Local providers** (optional, Apple Silicon only) — run TTS and STT
+   entirely on-device with no API keys or cloud calls. See
+   [Local, offline TTS & STT](#local-offline-tts--stt-apple-silicon).
 
 ### Build from Source
 
@@ -154,10 +162,12 @@ Generate audio files from a JSON transcript.
 vac slides tts [flags]
 
 Flags:
-  -t, --transcript string   Transcript JSON file (required)
-  -o, --output string       Output directory for audio files (default "audio")
-  -l, --lang string         Language/locale code (e.g., en-US, es-ES)
-      --provider string     TTS provider: elevenlabs or deepgram
+  -t, --transcript string    Transcript JSON file (required)
+  -o, --output string        Output directory for audio files (default "audio")
+  -l, --lang string          Language/locale code (e.g., en-US, es-ES)
+      --provider string      TTS provider: elevenlabs, deepgram, or f5tts-mlx
+      --local                Enable local TTS providers (F5-TTS MLX; Apple Silicon)
+      --f5tts-endpoint string  F5-TTS MLX gRPC endpoint (default unix:///tmp/omnivoice-f5tts.sock)
 ```
 
 **Output:**
@@ -170,6 +180,10 @@ Flags:
 ```bash
 # Generate audio for Spanish
 vac slides tts --transcript transcript.json --output audio/es-ES/ --lang es-ES
+
+# Generate audio locally with F5-TTS (no API key; requires the local server, see below)
+vac slides tts --transcript transcript.json --output audio/en-US/ --lang en-US \
+  --provider f5tts-mlx --local
 ```
 
 ### Command: `vac slides video`
@@ -222,11 +236,13 @@ Generate subtitle files (SRT/VTT) from audio files using speech-to-text.
 vac subtitle [flags]
 
 Flags:
-  -a, --audio string        Audio directory containing manifest.json (required)
-  -o, --output string       Output directory for subtitle files (default "subtitles")
-  -l, --lang string         Language code (auto-detected from manifest if not specified)
-      --provider string     STT provider: deepgram or elevenlabs (default: deepgram)
-      --individual          Also generate individual subtitle files per slide
+  -a, --audio string          Audio directory containing manifest.json (required)
+  -o, --output string         Output directory for subtitle files (default "subtitles")
+  -l, --lang string           Language code (auto-detected from manifest if not specified)
+      --provider string       STT provider: deepgram, elevenlabs, or whisper-mlx (default: deepgram)
+      --local                 Enable local STT providers (Whisper MLX; Apple Silicon)
+      --whisper-endpoint string  Whisper MLX gRPC endpoint (default unix:///tmp/omnivoice-whisper.sock)
+      --individual            Also generate individual subtitle files per slide
 ```
 
 **Output:**
@@ -242,7 +258,13 @@ vac subtitle --audio audio/fr-FR/
 
 # Generate with explicit language and custom output
 vac subtitle --audio audio/zh-Hans/ --lang zh-Hans --output subs/
+
+# Transcribe locally with Whisper (no API key; requires the local server, see below)
+vac subtitle --audio audio/en-US/ --lang en-US --provider whisper-mlx --local
 ```
+
+> `vac stt --manifest audio/en-US/manifest.json` accepts the same
+> `--provider whisper-mlx --local` / `--whisper-endpoint` flags.
 
 ### Command: `vac avatar generate`
 
@@ -541,6 +563,72 @@ vac slides video --check
 ```
 
 This will verify that all required tools (ffmpeg, marp) are installed.
+
+## Local, offline TTS & STT (Apple Silicon)
+
+vac can run **both** text-to-speech and speech-to-text entirely on-device
+through [OmniVoice](https://github.com/plexusone/omnivoice-core)'s MLX
+providers — no API keys, no cloud calls, no per-character costs:
+
+- **F5-TTS MLX** (`--provider f5tts-mlx`) — local voiceover generation
+- **Whisper MLX** (`--provider whisper-mlx`) — local subtitle transcription
+
+These run as small Python/MLX gRPC servers that vac talks to over a Unix
+domain socket. They require **Apple Silicon** (M1/M2/M3/M4); the MLX wheels
+are arm64-only.
+
+### 1. Start the local voice servers
+
+A helper script sets up an arm64 Python environment and launches both
+servers:
+
+```bash
+# One-time setup (creates an arm64 venv, installs MLX deps, generates gRPC stubs)
+scripts/localvoice.sh setup
+
+# Start both servers in the background
+scripts/localvoice.sh start -d
+
+# Check status / stop
+scripts/localvoice.sh status
+scripts/localvoice.sh stop
+```
+
+`scripts/localvoice.sh up` does setup-if-needed then starts in the
+background. The F5-TTS model (~2 GB) and Whisper model (~1.6 GB,
+`large-v3-turbo` by default) download from Hugging Face on first use and are
+cached thereafter. Override the Whisper model with
+`WHISPER_MODEL=small scripts/localvoice.sh start -d`.
+
+> The script always launches Python under `arch -arm64`, so it works even
+> when your shell is running under Rosetta (x86_64). It resolves the server
+> sources from the `omnivoice-core` module via `go list`, so no hard-coded
+> paths are needed.
+
+### 2. Generate a video with local providers
+
+The decoupled workflow uses `--local` on the TTS and STT steps; the final
+`slides video` render just consumes the pre-generated audio and subtitles:
+
+```bash
+# 1. Voiceover with F5-TTS (local)
+vac slides tts --transcript transcript.json --output audio/en-US/ \
+  --lang en-US --provider f5tts-mlx --local
+
+# 2. Subtitles with Whisper (local)
+vac subtitle --audio audio/en-US/ --lang en-US --provider whisper-mlx --local
+
+# 3. Render the video (embeds the Whisper subtitles)
+vac slides video --input presentation.md --manifest audio/en-US/manifest.json \
+  --subtitles subtitles/en-US.srt --subtitles-lang en-US --output video.mp4
+```
+
+BCP-47 locales like `en-US` work with both providers — Whisper's ISO-639-1
+requirement (`en`) is handled automatically.
+
+> **Note:** `vac slides video`'s built-in one-shot TTS is ElevenLabs-only,
+> so local providers are used via the decoupled `slides tts` → `subtitle` →
+> `slides video --manifest` flow shown above.
 
 ## Voiceover Formats
 

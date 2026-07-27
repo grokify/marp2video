@@ -118,9 +118,11 @@ vac slides tts [flags]
 | `-t, --transcript` | string | *required* | Transcript JSON file |
 | `-o, --output` | string | `audio` | Output directory for audio files |
 | `-l, --lang` | string | from transcript | Language/locale code (e.g., `en-US`) |
-| `--provider` | string | auto-detect | TTS provider: `elevenlabs` or `deepgram` |
+| `--provider` | string | auto-detect | TTS provider: `elevenlabs`, `deepgram`, or `f5tts-mlx` |
 | `--elevenlabs-api-key` | string | `$ELEVENLABS_API_KEY` | ElevenLabs API key |
 | `--deepgram-api-key` | string | `$DEEPGRAM_API_KEY` | Deepgram API key |
+| `--local` | bool | `false` | Enable local TTS providers (F5-TTS MLX; Apple Silicon) |
+| `--f5tts-endpoint` | string | `unix:///tmp/omnivoice-f5tts.sock` | F5-TTS MLX gRPC endpoint |
 | `-f, --force` | bool | `false` | Regenerate audio even if files exist |
 
 ### Examples
@@ -133,9 +135,15 @@ vac slides tts --transcript transcript.json --output audio/en-US/ --lang en-US
 vac slides tts --transcript transcript.json --output audio/es-ES/ \
   --lang es-ES --provider deepgram
 
+# Generate audio locally with F5-TTS (no API key; requires the local server)
+vac slides tts --transcript transcript.json --output audio/en-US/ \
+  --lang en-US --provider f5tts-mlx --local
+
 # Force regeneration
 vac slides tts --transcript transcript.json --output audio/ --force
 ```
+
+See [Local Providers](../guide/local-providers.md) for the `--local` server setup.
 
 ---
 
@@ -154,11 +162,13 @@ vac browser video [flags]
 | `-c, --config` | string | *required* | Configuration file (YAML/JSON) |
 | `-o, --output` | string | `output.mp4` | Output video file |
 | `-a, --audio-dir` | string | | Directory to save/reuse audio tracks |
-| `-p, --provider` | string | auto-detect | TTS provider: `elevenlabs` or `deepgram` |
+| `-p, --provider` | string | auto-detect | TTS provider: `elevenlabs`, `deepgram`, or `f5tts-mlx` |
 | `-v, --voice` | string | from config | TTS voice ID |
 | `-l, --lang` | string | `en-US` | Languages to generate (comma-separated) |
 | `--elevenlabs-api-key` | string | `$ELEVENLABS_API_KEY` | ElevenLabs API key |
 | `--deepgram-api-key` | string | `$DEEPGRAM_API_KEY` | Deepgram API key |
+| `--local` | bool | `false` | Enable local TTS providers (F5-TTS MLX; Apple Silicon) |
+| `--f5tts-endpoint` | string | `unix:///tmp/omnivoice-f5tts.sock` | F5-TTS MLX gRPC endpoint |
 | `--width` | int | `1920` | Video width in pixels |
 | `--height` | int | `1080` | Video height in pixels |
 | `--fps` | int | `30` | Video frame rate |
@@ -286,7 +296,9 @@ vac subtitle [flags]
 | `-a, --audio` | string | *required* | Audio directory containing manifest.json |
 | `-o, --output` | string | `subtitles` | Output directory for subtitle files |
 | `-l, --lang` | string | from manifest | Language code |
-| `--provider` | string | `deepgram` | STT provider: `deepgram` or `elevenlabs` |
+| `--provider` | string | `deepgram` | STT provider: `deepgram`, `elevenlabs`, or `whisper-mlx` |
+| `--local` | bool | `false` | Enable local STT providers (Whisper MLX; Apple Silicon) |
+| `--whisper-endpoint` | string | `unix:///tmp/omnivoice-whisper.sock` | Whisper MLX gRPC endpoint |
 | `--individual` | bool | `false` | Also generate per-slide subtitle files |
 
 ### Examples
@@ -298,9 +310,14 @@ vac subtitle --audio audio/en-US/
 # Custom output directory
 vac subtitle --audio audio/fr-FR/ --output subs/
 
+# Transcribe locally with Whisper (no API key; requires the local server)
+vac subtitle --audio audio/en-US/ --lang en-US --provider whisper-mlx --local
+
 # Keep individual slide subtitles
 vac subtitle --audio audio/en-US/ --individual
 ```
+
+See [Local Providers](../guide/local-providers.md) for the `--local` server setup.
 
 ---
 
