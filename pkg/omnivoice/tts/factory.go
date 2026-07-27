@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/plexusone/omnivoice"
-	_ "github.com/plexusone/omnivoice-core/providers/f5tts" // Register F5-TTS local provider
-	_ "github.com/plexusone/omnivoice/providers/all"        // Register all cloud providers
+	_ "github.com/plexusone/omnivoice-core/providers/f5tts-mlx" // Register F5-TTS MLX local provider
+	_ "github.com/plexusone/omnivoice/providers/all"            // Register all cloud providers
 )
 
 // ProviderConfig holds configuration for creating TTS providers.
@@ -16,11 +16,13 @@ type ProviderConfig struct {
 	// DeepgramAPIKey is the API key for Deepgram.
 	DeepgramAPIKey string
 
-	// F5TTSEndpoint is the gRPC endpoint for F5-TTS local server.
+	// F5TTSMLXEndpoint is the gRPC endpoint for the F5-TTS MLX local server.
 	// Default: "unix:///tmp/omnivoice-f5tts.sock"
-	F5TTSEndpoint string
+	F5TTSMLXEndpoint string
 
-	// EnableLocalProviders enables local TTS providers (F5-TTS, etc).
+	// EnableLocalProviders enables local TTS providers (F5-TTS MLX, etc).
+	// Requires the corresponding Python/MLX gRPC server to be running locally
+	// (Apple Silicon only). See providers/f5tts-mlx/server in omnivoice-core.
 	EnableLocalProviders bool
 }
 
@@ -52,7 +54,7 @@ func (f *Factory) Get(name string) (*Provider, error) {
 		} else if f.config.DeepgramAPIKey != "" {
 			name = "deepgram"
 		} else if f.config.EnableLocalProviders {
-			name = "f5tts"
+			name = "f5tts-mlx"
 		} else {
 			return nil, fmt.Errorf("no provider specified and no API keys or local providers configured")
 		}
@@ -99,12 +101,12 @@ func (f *Factory) createProvider(name string) (*Provider, error) {
 		}
 		opts = append(opts, omnivoice.WithAPIKey(f.config.DeepgramAPIKey))
 
-	case "f5tts":
+	case "f5tts-mlx":
 		if !f.config.EnableLocalProviders {
 			return nil, fmt.Errorf("local providers not enabled")
 		}
-		if f.config.F5TTSEndpoint != "" {
-			opts = append(opts, omnivoice.WithEndpoint(f.config.F5TTSEndpoint))
+		if f.config.F5TTSMLXEndpoint != "" {
+			opts = append(opts, omnivoice.WithEndpoint(f.config.F5TTSMLXEndpoint))
 		}
 
 	default:
@@ -130,7 +132,7 @@ func (f *Factory) Available() []string {
 		names = append(names, "deepgram")
 	}
 	if f.config.EnableLocalProviders {
-		names = append(names, "f5tts")
+		names = append(names, "f5tts-mlx")
 	}
 	return names
 }
