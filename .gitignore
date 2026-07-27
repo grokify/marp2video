@@ -46,3 +46,7 @@ Thumbs.db
 
 # MkDocs build output
 /site/
+
+# Local voice servers (scripts/localvoice.sh)
+/.localvoice-venv/
+/.localvoice-logs/
