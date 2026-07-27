@@ -494,19 +494,14 @@ func alignTranscriptionWithOriginal(result *omnistt.TranscriptionResult, origina
 	// Split original text into words
 	originalWords := splitIntoWords(originalText)
 
-	// If word counts match, do direct positional mapping
-	if len(originalWords) == len(sttWords) {
-		return createAlignedResult(originalWords, sttWords, result.Duration, result.Language)
+	// Map the original words onto the STT word timings.
+	aligned, ok := alignWordsWithTiming(originalWords, sttWords)
+	if !ok {
+		// Alignment failed - return original STT result
+		return result
 	}
 
-	// Word counts don't match - try fuzzy alignment
-	alignedWords := fuzzyAlignWords(originalWords, sttWords)
-	if len(alignedWords) > 0 {
-		return createAlignedResult(alignedWords, sttWords[:len(alignedWords)], result.Duration, result.Language)
-	}
-
-	// Alignment failed - return original STT result
-	return result
+	return buildAlignedResult(aligned, result.Duration, result.Language)
 }
 
 // splitIntoWords splits text into words, preserving punctuation attached to words.
@@ -555,92 +550,135 @@ func stripPunctuation(word string) string {
 	return string(runes[start:end])
 }
 
-// wordsMatch compares two words, ignoring case and punctuation.
-func wordsMatch(original, stt string) bool {
-	origClean := strings.ToLower(stripPunctuation(original))
-	sttClean := strings.ToLower(stripPunctuation(stt))
-	return origClean == sttClean
+// normalizeForMatch reduces a word to its comparable core: lowercase letters
+// and digits only. Unlike stripPunctuation it also drops *internal* punctuation
+// (hyphens, apostrophes, commas), so "AI-generated" and "AI generated" compare
+// equal and hyphenated words align to STT tokens that split them.
+func normalizeForMatch(word string) string {
+	var b strings.Builder
+	for _, r := range word {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return b.String()
 }
 
-// fuzzyAlignWords attempts to align original words with STT words,
-// handling minor mismatches like contractions or number formatting.
-func fuzzyAlignWords(originalWords []string, sttWords []omnistt.Word) []string {
-	result := make([]string, 0, len(sttWords))
-	origIdx := 0
+// wordsMatch compares two words, ignoring case and all punctuation.
+func wordsMatch(original, stt string) bool {
+	return normalizeForMatch(original) == normalizeForMatch(stt)
+}
 
-	for sttIdx := 0; sttIdx < len(sttWords) && origIdx < len(originalWords); sttIdx++ {
-		sttWord := sttWords[sttIdx].Text
+// alignWordsWithTiming maps original-transcript words onto STT word timings,
+// tolerating the word splits and merges that STT engines introduce — e.g.
+// Whisper hearing "marp2video" as "MARP2 Video", "command-line" as
+// "command line", or "AI-generated" as "AI generated". Each returned word
+// carries the original text with the timing span of the STT word(s) it matched.
+// It returns ok=false when too many words fail to align, so the caller can fall
+// back to the raw STT text rather than emit a desynced original.
+func alignWordsWithTiming(orig []string, stt []omnistt.Word) ([]omnistt.Word, bool) {
+	if len(orig) == 0 || len(stt) == 0 {
+		return nil, false
+	}
 
-		// Direct match
-		if wordsMatch(originalWords[origIdx], sttWord) {
-			// Preserve original word with its punctuation
-			result = append(result, originalWords[origIdx])
-			origIdx++
+	out := make([]omnistt.Word, 0, len(orig))
+	i, j := 0, 0
+	mismatches := 0
+
+	for i < len(orig) && j < len(stt) {
+		// 1:1 direct match.
+		if wordsMatch(orig[i], stt[j].Text) {
+			out = append(out, alignedWord(orig[i], stt[j], stt[j]))
+			i++
+			j++
 			continue
 		}
 
-		// Check if STT split a word (e.g., "A.I." -> "A" "I")
-		// Look ahead in STT to see if combined matches original
-		if sttIdx+1 < len(sttWords) {
-			combined := sttWord + sttWords[sttIdx+1].Text
-			if wordsMatch(originalWords[origIdx], combined) {
-				// Use first half timing, skip next STT word
-				result = append(result, originalWords[origIdx])
-				origIdx++
-				sttIdx++ // Skip next STT word
-				continue
+		// 1:N — STT split one original word into up to 3 tokens
+		// (e.g. "marp2video" -> "MARP2" "Video"). Span their combined timing.
+		matched := false
+		for n := 2; n <= 3 && j+n <= len(stt); n++ {
+			if normalizeForMatch(orig[i]) == combinedNormalized(stt[j:j+n]) {
+				out = append(out, alignedWord(orig[i], stt[j], stt[j+n-1]))
+				i++
+				j += n
+				matched = true
+				break
 			}
 		}
-
-		// Check if original has a word that STT combined
-		// (e.g., original "do not" but STT heard "don't")
-		if origIdx+1 < len(originalWords) {
-			combined := originalWords[origIdx] + originalWords[origIdx+1]
-			if wordsMatch(combined, sttWord) {
-				// Use original combined
-				result = append(result, originalWords[origIdx]+" "+originalWords[origIdx+1])
-				origIdx += 2
-				continue
-			}
+		if matched {
+			continue
 		}
 
-		// No match found - use STT word but this is a signal alignment may fail
-		result = append(result, sttWord)
-		origIdx++
+		// N:1 — STT merged multiple original words into one token
+		// (e.g. original "do not" heard as "don't").
+		if i+1 < len(orig) &&
+			normalizeForMatch(orig[i])+normalizeForMatch(orig[i+1]) == normalizeForMatch(stt[j].Text) {
+			out = append(out, alignedWord(orig[i]+" "+orig[i+1], stt[j], stt[j]))
+			i += 2
+			j++
+			continue
+		}
+
+		// No match — keep the original word and borrow this STT word's timing.
+		out = append(out, alignedWord(orig[i], stt[j], stt[j]))
+		i++
+		j++
+		mismatches++
 	}
 
-	// If we used all original words and matched all STT words, success
-	if origIdx == len(originalWords) && len(result) == len(sttWords) {
-		return result
+	// Any leftover original words get the last known end time (zero-length cue).
+	for i < len(orig) {
+		var last omnistt.Word
+		if len(out) > 0 {
+			last = out[len(out)-1]
+		}
+		out = append(out, omnistt.Word{Text: orig[i], StartTime: last.EndTime, EndTime: last.EndTime})
+		i++
+		mismatches++
 	}
 
-	// Alignment was incomplete
-	return nil
+	// Give up if more than ~1/3 of the words failed to align cleanly; the raw
+	// STT text is safer than a badly desynced original.
+	if mismatches*3 > len(orig) {
+		return nil, false
+	}
+
+	return out, true
 }
 
-// createAlignedResult creates a new TranscriptionResult with original words and STT timestamps.
-func createAlignedResult(originalWords []string, sttWords []omnistt.Word, duration time.Duration, language string) *omnistt.TranscriptionResult {
-	// Create a single segment with all aligned words
-	words := make([]omnistt.Word, len(sttWords))
-	var fullText strings.Builder
+// combinedNormalized concatenates the match-normalized text of the given STT
+// words, for comparing against a single original word an STT engine split.
+func combinedNormalized(words []omnistt.Word) string {
+	var b strings.Builder
+	for _, w := range words {
+		b.WriteString(normalizeForMatch(w.Text))
+	}
+	return b.String()
+}
 
-	for i, sttWord := range sttWords {
+// alignedWord builds a word carrying the given text with the timing span from
+// the start word's start to the end word's end (they are equal for a 1:1 match).
+func alignedWord(text string, start, end omnistt.Word) omnistt.Word {
+	return omnistt.Word{
+		Text:       text,
+		StartTime:  start.StartTime,
+		EndTime:    end.EndTime,
+		Confidence: start.Confidence,
+		Speaker:    start.Speaker,
+	}
+}
+
+// buildAlignedResult assembles a TranscriptionResult from aligned words.
+func buildAlignedResult(words []omnistt.Word, duration time.Duration, language string) *omnistt.TranscriptionResult {
+	var fullText strings.Builder
+	for i, w := range words {
 		if i > 0 {
 			fullText.WriteString(" ")
 		}
-		originalWord := originalWords[i]
-		fullText.WriteString(originalWord)
-
-		words[i] = omnistt.Word{
-			Text:       originalWord,
-			StartTime:  sttWord.StartTime,
-			EndTime:    sttWord.EndTime,
-			Confidence: sttWord.Confidence,
-			Speaker:    sttWord.Speaker,
-		}
+		fullText.WriteString(w.Text)
 	}
 
-	// Determine segment start/end from words
 	var startTime, endTime time.Duration
 	if len(words) > 0 {
 		startTime = words[0].StartTime
