@@ -29,6 +29,7 @@ type SegmentTTSGenerator struct {
 	provider     *omnitts.Provider
 	defaultVoice transcript.VoiceConfig
 	progressFunc ProgressFunc
+	pronouncer   *Pronouncer
 }
 
 // NewSegmentTTSGenerator creates a new segment-aware TTS generator.
@@ -42,6 +43,14 @@ func NewSegmentTTSGenerator(provider *omnitts.Provider, defaultVoice transcript.
 // SetProgressFunc sets a callback for progress updates during TTS generation.
 func (g *SegmentTTSGenerator) SetProgressFunc(fn ProgressFunc) {
 	g.progressFunc = fn
+}
+
+// SetPronunciations configures TTS pronunciation substitutions (see
+// PronunciationDictionary). Applied only to the text sent to the TTS
+// provider; voiceover/subtitle/manifest text elsewhere is unaffected. A nil
+// dict clears any previously set pronunciations.
+func (g *SegmentTTSGenerator) SetPronunciations(dict *PronunciationDictionary) {
+	g.pronouncer = NewPronouncer(dict)
 }
 
 // reportProgress calls the progress function if set.
@@ -150,7 +159,10 @@ func (g *SegmentTTSGenerator) GenerateForSegment(
 				voice = *vo.Voice
 			}
 
-			audioData, err := g.synthesize(ctx, vo.Text, voice)
+			// Pronunciation substitutions affect only what's sent to TTS;
+			// vo.Text itself (used for subtitles/manifests) is untouched.
+			spokenText := g.pronouncer.Apply(vo.Text, language)
+			audioData, err := g.synthesize(ctx, spokenText, voice)
 			if err != nil {
 				return nil, fmt.Errorf("TTS failed for voiceover %d: %w", vo.Index, err)
 			}
@@ -362,7 +374,10 @@ func (g *SegmentTTSGenerator) generateForSegmentWithProgress(
 				voice = *vo.Voice
 			}
 
-			audioData, err := g.synthesize(ctx, vo.Text, voice)
+			// Pronunciation substitutions affect only what's sent to TTS;
+			// vo.Text itself (used for subtitles/manifests) is untouched.
+			spokenText := g.pronouncer.Apply(vo.Text, language)
+			audioData, err := g.synthesize(ctx, spokenText, voice)
 			if err != nil {
 				return nil, fmt.Errorf("TTS failed for voiceover %d: %w", vo.Index, err)
 			}

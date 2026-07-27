@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	octerm "github.com/plexusone/omnivoice-core/terminology"
 )
 
 func TestCaseCorrector_Correct(t *testing.T) {
@@ -93,7 +95,13 @@ func TestCaseCorrector_CorrectWord(t *testing.T) {
 }
 
 func TestBuiltInCorrections(t *testing.T) {
-	// Verify some key built-in corrections exist
+	// Verify some key built-in corrections exist, sourced from the
+	// terminology-spec-embedded layer via omnivoice-core/terminology.
+	builtin, err := octerm.BuiltinCorrections()
+	if err != nil {
+		t.Fatalf("BuiltinCorrections() error = %v", err)
+	}
+
 	expectedCorrections := map[string]string{
 		"ai":          "AI",
 		"openai":      "OpenAI",
@@ -106,10 +114,10 @@ func TestBuiltInCorrections(t *testing.T) {
 	}
 
 	for key, expected := range expectedCorrections {
-		if actual, ok := builtInCorrections[key]; !ok {
+		if actual, ok := builtin[key]; !ok {
 			t.Errorf("missing built-in correction for %q", key)
 		} else if actual != expected {
-			t.Errorf("builtInCorrections[%q] = %q, want %q", key, actual, expected)
+			t.Errorf("builtin[%q] = %q, want %q", key, actual, expected)
 		}
 	}
 }
