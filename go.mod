@@ -146,3 +146,9 @@ require (
 // Remove this replace directive when upgrading rod to a version that
 // supports newer fetchup releases.
 replace github.com/ysmood/fetchup => github.com/ysmood/fetchup v0.2.3
+
+// Local development: use the working tree of omnivoice-core so we pick up the
+// whisper-mlx TranscribeFile implementation (reads the file and delegates to
+// Transcribe) before it is published in a tagged release.
+// Remove this once a release of omnivoice-core with that fix is available.
+replace github.com/plexusone/omnivoice-core => ../../plexusone/omnivoice-core

@@ -216,8 +216,6 @@ github.com/plexusone/omnillm-core v0.18.0 h1:JnONiIe08W+83hsyxyFHSouk0jkBY2o7/Sz
 github.com/plexusone/omnillm-core v0.18.0/go.mod h1:180U/oa67fly3+T3h1sL/pBMvcjIKR+bvSEkAGnalMY=
 github.com/plexusone/omnivoice v0.13.0 h1:HU1Q2Qt740sJt+FgP1vSJI6Xpue1pA67Z5e6c4Wvs+A=
 github.com/plexusone/omnivoice v0.13.0/go.mod h1:RwS7s/xOW7y+Gs6+6hB1JJHRn/MZnit7zlk4/NyR3Es=
-github.com/plexusone/omnivoice-core v0.15.0 h1:lvzucRbP53bwzBhbZ/x15iRUfJexJqzEeLJvXo74GRM=
-github.com/plexusone/omnivoice-core v0.15.0/go.mod h1:SwFSgk9D1UH9XIyofLUU6BEEWEtHsS+PHKduMp+VucE=
 github.com/plexusone/tavus-go v0.3.0 h1:iXeZXGuaabAbqEFuoQZNvx+broUPneqhywCsYo2OxdA=
 github.com/plexusone/tavus-go v0.3.0/go.mod h1:nYbsSOuwEw/LLs9d9U10sdekigETnwN+UvyHD6VwADA=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
