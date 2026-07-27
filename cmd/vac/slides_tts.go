@@ -53,6 +53,8 @@ var (
 	stDeepgramAPIKey   string
 	stProvider         string
 	stForce            bool
+	stLocal            bool
+	stF5TTSEndpoint    string
 )
 
 func init() {
@@ -61,8 +63,10 @@ func init() {
 	slidesTTSCmd.Flags().StringVarP(&stLanguage, "lang", "l", "", "Language/locale code (e.g., en-US, es-ES)")
 	slidesTTSCmd.Flags().StringVar(&stElevenLabsAPIKey, "elevenlabs-api-key", "", "ElevenLabs API key (or use ELEVENLABS_API_KEY env var)")
 	slidesTTSCmd.Flags().StringVar(&stDeepgramAPIKey, "deepgram-api-key", "", "Deepgram API key (or use DEEPGRAM_API_KEY env var)")
-	slidesTTSCmd.Flags().StringVar(&stProvider, "provider", "", "TTS provider: elevenlabs or deepgram (overrides voice config if set)")
+	slidesTTSCmd.Flags().StringVar(&stProvider, "provider", "", "TTS provider: elevenlabs, deepgram, or f5tts-mlx (overrides voice config if set)")
 	slidesTTSCmd.Flags().BoolVarP(&stForce, "force", "f", false, "Regenerate audio even if files already exist")
+	slidesTTSCmd.Flags().BoolVar(&stLocal, "local", false, "Enable local TTS providers (F5-TTS MLX); requires a local gRPC server running on Apple Silicon")
+	slidesTTSCmd.Flags().StringVar(&stF5TTSEndpoint, "f5tts-endpoint", "", "F5-TTS MLX gRPC endpoint (default: unix:///tmp/omnivoice-f5tts.sock)")
 
 	if err := slidesTTSCmd.MarkFlagRequired("transcript"); err != nil {
 		panic(err)
@@ -90,9 +94,9 @@ func runSlidesTTS(cmd *cobra.Command, args []string) error {
 		deepgramKey = os.Getenv("DEEPGRAM_API_KEY")
 	}
 
-	// Require at least one API key
-	if elevenLabsKey == "" && deepgramKey == "" {
-		return fmt.Errorf("TTS API key required: use --elevenlabs-api-key or --deepgram-api-key flag, or set ELEVENLABS_API_KEY or DEEPGRAM_API_KEY env var")
+	// Require at least one API key, unless using a local provider
+	if elevenLabsKey == "" && deepgramKey == "" && !stLocal {
+		return fmt.Errorf("TTS API key required: use --elevenlabs-api-key or --deepgram-api-key flag, set ELEVENLABS_API_KEY or DEEPGRAM_API_KEY env var, or use --local for F5-TTS MLX")
 	}
 
 	// Load transcript
@@ -119,8 +123,10 @@ func runSlidesTTS(cmd *cobra.Command, args []string) error {
 	// Create generator config
 	genConfig := tts.TranscriptGeneratorConfig{
 		ProviderConfig: omnitts.ProviderConfig{
-			ElevenLabsAPIKey: elevenLabsKey,
-			DeepgramAPIKey:   deepgramKey,
+			ElevenLabsAPIKey:     elevenLabsKey,
+			DeepgramAPIKey:       deepgramKey,
+			EnableLocalProviders: stLocal,
+			F5TTSMLXEndpoint:     stF5TTSEndpoint,
 		},
 		DefaultProvider: stProvider,
 		OutputDir:       stOutputDir,
