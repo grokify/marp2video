@@ -88,6 +88,7 @@ nav:
     - Architecture: development/architecture.md
     - Contributing: development/contributing.md
   - Releases:
+    - v0.8.0: releases/v0.8.0.md
     - v0.7.0: releases/v0.7.0.md
     - v0.6.0: releases/v0.6.0.md
     - v0.5.0: releases/v0.5.0.md
