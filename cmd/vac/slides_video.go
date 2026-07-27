@@ -94,7 +94,7 @@ func init() {
 
 	// Avatar presenter overlay (optional). Setting --avatar-id enables it.
 	slidesVideoCmd.Flags().StringVar(&svAvatarID, "avatar-id", "", "Enable avatar presenter overlay with this avatar identity (heygen avatar_id / bithuman agent_id)")
-	slidesVideoCmd.Flags().StringVar(&svAvatarProvider, "avatar-provider", "heygen", "Avatar provider: heygen or bithuman (must support audio upload)")
+	slidesVideoCmd.Flags().StringVar(&svAvatarProvider, "avatar-provider", "heygen", "Avatar provider: heygen, bithuman, or liveportrait-joyvasa (must support audio upload)")
 	slidesVideoCmd.Flags().StringVar(&svAvatarAPIKey, "avatar-api-key", "", "Avatar provider API key (or use the provider's env var)")
 	slidesVideoCmd.Flags().StringArrayVar(&svAvatarExt, "avatar-ext", nil, "Avatar provider-specific request option as key=value (repeatable)")
 	slidesVideoCmd.Flags().DurationVar(&svAvatarPoll, "avatar-poll", 5*time.Second, "Avatar job status poll interval")
@@ -234,14 +234,17 @@ func buildSlidesAvatarConfig() (*orchestrator.AvatarConfig, error) {
 
 	envVar, ok := providerAPIKeyEnvs[svAvatarProvider]
 	if !ok {
-		return nil, fmt.Errorf("unknown avatar provider %q (available: heygen, tavus, bithuman)", svAvatarProvider)
+		return nil, fmt.Errorf("unknown avatar provider %q (available: heygen, tavus, bithuman, liveportrait-joyvasa)", svAvatarProvider)
 	}
 	apiKey := svAvatarAPIKey
-	if apiKey == "" {
-		apiKey = os.Getenv(envVar)
-	}
-	if apiKey == "" {
-		return nil, fmt.Errorf("%s API key required for avatar overlay: use --avatar-api-key or %s env var", svAvatarProvider, envVar)
+	// Local providers don't require an API key
+	if !localProviders[svAvatarProvider] {
+		if apiKey == "" {
+			apiKey = os.Getenv(envVar)
+		}
+		if apiKey == "" {
+			return nil, fmt.Errorf("%s API key required for avatar overlay: use --avatar-api-key or %s env var", svAvatarProvider, envVar)
+		}
 	}
 
 	extensions, err := parseExtensions(svAvatarExt)

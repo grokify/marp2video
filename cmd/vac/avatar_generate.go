@@ -66,17 +66,24 @@ var (
 )
 
 // providerAPIKeyEnvs maps provider names to their API key environment variables.
+// Local providers (liveportrait-joyvasa) have an empty string — no key required.
 var providerAPIKeyEnvs = map[string]string{
-	"heygen":   "HEYGEN_API_KEY",
-	"tavus":    "TAVUS_API_KEY",
-	"bithuman": "BITHUMAN_API_KEY",
+	"heygen":               "HEYGEN_API_KEY",
+	"tavus":                "TAVUS_API_KEY",
+	"bithuman":             "BITHUMAN_API_KEY",
+	"liveportrait-joyvasa": "", // local provider, no API key
+}
+
+// localProviders is the set of providers that run locally and don't need an API key.
+var localProviders = map[string]bool{
+	"liveportrait-joyvasa": true,
 }
 
 func init() {
 	avatarGenerateCmd.Flags().StringVarP(&agManifest, "manifest", "m", "", "Audio manifest from 'vac slides tts' (concatenated with pause gaps)")
 	avatarGenerateCmd.Flags().StringVar(&agAudio, "audio", "", "Narration audio file (MP3 recommended)")
 	avatarGenerateCmd.Flags().StringVar(&agAudioURL, "audio-url", "", "Pre-hosted narration audio URL")
-	avatarGenerateCmd.Flags().StringVarP(&agProvider, "provider", "p", "heygen", "Avatar provider: heygen, tavus, or bithuman")
+	avatarGenerateCmd.Flags().StringVarP(&agProvider, "provider", "p", "heygen", "Avatar provider: heygen, tavus, bithuman, or liveportrait-joyvasa (local)")
 	avatarGenerateCmd.Flags().StringVar(&agAvatarID, "avatar-id", "", "Avatar identity (heygen avatar_id / tavus replica_id / bithuman agent_id) (required)")
 	avatarGenerateCmd.Flags().StringVarP(&agAPIKey, "api-key", "k", "", "Provider API key (or use the provider's env var)")
 	avatarGenerateCmd.Flags().StringVarP(&agOutput, "output", "o", "presenter.mp4", "Output presenter video file")
@@ -108,13 +115,16 @@ func runAvatarGenerate(cmd *cobra.Command, args []string) error {
 	apiKey := agAPIKey
 	envVar, ok := providerAPIKeyEnvs[agProvider]
 	if !ok {
-		return fmt.Errorf("unknown provider %q (available: heygen, tavus, bithuman)", agProvider)
+		return fmt.Errorf("unknown provider %q (available: heygen, tavus, bithuman, liveportrait-joyvasa)", agProvider)
 	}
-	if apiKey == "" {
-		apiKey = os.Getenv(envVar)
-	}
-	if apiKey == "" {
-		return fmt.Errorf("%s API key required: use --api-key flag or %s env var", agProvider, envVar)
+	// Local providers don't require an API key
+	if !localProviders[agProvider] {
+		if apiKey == "" {
+			apiKey = os.Getenv(envVar)
+		}
+		if apiKey == "" {
+			return fmt.Errorf("%s API key required: use --api-key flag or %s env var", agProvider, envVar)
+		}
 	}
 
 	extensions, err := parseExtensions(agExtensions)

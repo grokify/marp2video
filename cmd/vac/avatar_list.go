@@ -49,14 +49,17 @@ func runAvatarList(cmd *cobra.Command, args []string) error {
 
 	envVar, ok := providerAPIKeyEnvs[alProvider]
 	if !ok {
-		return fmt.Errorf("unknown provider %q (available: heygen, tavus, bithuman)", alProvider)
+		return fmt.Errorf("unknown provider %q (available: heygen, tavus, bithuman, liveportrait-joyvasa)", alProvider)
 	}
 	apiKey := alAPIKey
-	if apiKey == "" {
-		apiKey = os.Getenv(envVar)
-	}
-	if apiKey == "" {
-		return fmt.Errorf("%s API key required: use --api-key flag or %s env var", alProvider, envVar)
+	// Local providers don't require an API key
+	if !localProviders[alProvider] {
+		if apiKey == "" {
+			apiKey = os.Getenv(envVar)
+		}
+		if apiKey == "" {
+			return fmt.Errorf("%s API key required: use --api-key flag or %s env var", alProvider, envVar)
+		}
 	}
 
 	provider, err := omniavatar.GetRenderProvider(alProvider, omniavatar.WithAPIKey(apiKey))
