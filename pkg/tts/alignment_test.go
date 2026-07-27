@@ -203,44 +203,94 @@ func TestAlignTranscriptionWithOriginal_MismatchedCounts(t *testing.T) {
 	}
 }
 
-func TestFuzzyAlignWords(t *testing.T) {
+func TestAlignWordsWithTiming(t *testing.T) {
 	tests := []struct {
-		name          string
-		originalWords []string
-		sttWords      []omnistt.Word
-		expectNil     bool
-		expectedLen   int
+		name      string
+		orig      []string
+		stt       []omnistt.Word
+		expectOK  bool
+		wantWords []string
 	}{
 		{
-			name:          "exact match",
-			originalWords: []string{"Hello", "World"},
-			sttWords: []omnistt.Word{
-				{Text: "hello"},
-				{Text: "world"},
-			},
-			expectNil:   false,
-			expectedLen: 2,
+			name: "exact 1:1 match",
+			orig: []string{"Hello", "World"},
+			stt:  []omnistt.Word{{Text: "hello"}, {Text: "world"}},
+
+			expectOK:  true,
+			wantWords: []string{"Hello", "World"},
 		},
 		{
-			name:          "mismatched count",
-			originalWords: []string{"Hello", "World", "Test"},
-			sttWords: []omnistt.Word{
-				{Text: "hello"},
-				{Text: "world"},
-			},
-			expectNil: true,
+			name: "STT split hyphenated word (command-line)",
+			orig: []string{"a", "command-line", "tool"},
+			stt:  []omnistt.Word{{Text: "a"}, {Text: "command"}, {Text: "line"}, {Text: "tool"}},
+
+			expectOK:  true,
+			wantWords: []string{"a", "command-line", "tool"},
+		},
+		{
+			name: "STT split brand into token+word (marp2video)",
+			orig: []string{"Welcome", "to", "marp2video,"},
+			stt:  []omnistt.Word{{Text: "Welcome"}, {Text: "to"}, {Text: "MARP2"}, {Text: "Video"}},
+
+			expectOK:  true,
+			wantWords: []string{"Welcome", "to", "marp2video,"},
+		},
+		{
+			name: "STT merged two words (web site -> website)",
+			orig: []string{"visit", "the", "web", "site", "now"},
+			stt:  []omnistt.Word{{Text: "visit"}, {Text: "the"}, {Text: "website"}, {Text: "now"}},
+
+			expectOK:  true,
+			wantWords: []string{"visit", "the", "web site", "now"},
+		},
+		{
+			name: "too many mismatches falls back",
+			orig: []string{"completely", "different", "original", "words"},
+			stt:  []omnistt.Word{{Text: "alpha"}, {Text: "beta"}},
+
+			expectOK: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := fuzzyAlignWords(tt.originalWords, tt.sttWords)
-			if tt.expectNil && result != nil {
-				t.Errorf("expected nil, got %v", result)
+			got, ok := alignWordsWithTiming(tt.orig, tt.stt)
+			if ok != tt.expectOK {
+				t.Fatalf("alignWordsWithTiming ok = %v, want %v", ok, tt.expectOK)
 			}
-			if !tt.expectNil && len(result) != tt.expectedLen {
-				t.Errorf("expected len %d, got %d", tt.expectedLen, len(result))
+			if !tt.expectOK {
+				return
+			}
+			if len(got) != len(tt.wantWords) {
+				t.Fatalf("got %d words, want %d: %v", len(got), len(tt.wantWords), got)
+			}
+			for i, w := range tt.wantWords {
+				if got[i].Text != w {
+					t.Errorf("word[%d] = %q, want %q", i, got[i].Text, w)
+				}
 			}
 		})
+	}
+}
+
+// TestAlignWordsWithTiming_SpanTiming verifies that when STT splits an original
+// word, the aligned word spans from the first token's start to the last token's
+// end.
+func TestAlignWordsWithTiming_SpanTiming(t *testing.T) {
+	orig := []string{"marp2video"}
+	stt := []omnistt.Word{
+		{Text: "MARP2", StartTime: 100 * time.Millisecond, EndTime: 400 * time.Millisecond},
+		{Text: "Video", StartTime: 400 * time.Millisecond, EndTime: 900 * time.Millisecond},
+	}
+
+	got, ok := alignWordsWithTiming(orig, stt)
+	if !ok || len(got) != 1 {
+		t.Fatalf("alignWordsWithTiming ok=%v words=%d, want ok=true words=1", ok, len(got))
+	}
+	if got[0].StartTime != 100*time.Millisecond {
+		t.Errorf("start = %v, want 100ms", got[0].StartTime)
+	}
+	if got[0].EndTime != 900*time.Millisecond {
+		t.Errorf("end = %v, want 900ms (span across both split tokens)", got[0].EndTime)
 	}
 }

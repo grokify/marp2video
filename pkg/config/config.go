@@ -54,6 +54,15 @@ type VideoConfig struct {
 
 	// Metadata is arbitrary key-value pairs for custom use
 	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+
+	// Pronunciations maps terms to how they should be spoken by TTS, keyed by
+	// BCP-47 language (e.g. {"AAuth": {"en-US": "ay auth"}}). Applied to text
+	// immediately before synthesis, for any provider; the original spelling
+	// is left untouched everywhere else (timing-based subtitles, manifests),
+	// so displayed text stays correct even though the audio says it
+	// phonetically. Matching is case-insensitive with word boundaries, and
+	// multi-word terms are matched before shorter overlapping ones.
+	Pronunciations map[string]map[string]string `json:"pronunciations,omitempty" yaml:"pronunciations,omitempty"`
 }
 
 // Resolution defines video dimensions

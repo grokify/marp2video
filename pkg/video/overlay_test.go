@@ -30,6 +30,29 @@ func TestBuildOverlayFilterDefaults(t *testing.T) {
 	}
 }
 
+// TestBuildOverlayFilterNormalizesBaseFPS guards against a regression where
+// slide/screen-recorded base videos that hold a single frame for a long
+// duration (rather than encoding continuous frames) made the overlay filter
+// composite the avatar exactly once and then appear frozen: the overlay
+// filter emits one output frame per BASE-input frame, so an un-normalized,
+// frame-sparse base silently drops the avatar's motion.
+func TestBuildOverlayFilterNormalizesBaseFPS(t *testing.T) {
+	opts := OverlayOptions{}
+	opts.applyDefaults()
+
+	filter, err := buildOverlayFilter(opts)
+	if err != nil {
+		t.Fatalf("buildOverlayFilter() error = %v", err)
+	}
+
+	if !strings.Contains(filter, "[0:v]fps=30[base]") {
+		t.Errorf("filter does not normalize the base stream's frame rate:\n%s", filter)
+	}
+	if strings.Contains(filter, "[0:v][avatar]overlay") || strings.Contains(filter, "[0:v][disc]overlay") {
+		t.Errorf("filter overlays directly onto the un-normalized [0:v] instead of [base]:\n%s", filter)
+	}
+}
+
 func TestBuildOverlayFilterWithBorder(t *testing.T) {
 	opts := OverlayOptions{Diameter: 300, BorderWidth: 6, BorderColor: "0x336699", MarginX: 40, MarginY: 50}
 	opts.applyDefaults()

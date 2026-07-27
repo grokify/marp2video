@@ -67,6 +67,8 @@ var (
 	subtitleTimestamps      string
 	subtitleDictionaries    []string
 	subtitleNoBuiltIn       bool
+	subtitleLocal           bool
+	subtitleWhisperEndpoint string
 )
 
 func init() {
@@ -75,7 +77,9 @@ func init() {
 	subtitleCmd.Flags().StringVarP(&subtitleLanguage, "lang", "l", "", "Language code (auto-detected from manifest if not specified)")
 	subtitleCmd.Flags().StringVar(&subtitleElevenLabsKey, "elevenlabs-api-key", "", "ElevenLabs API key (or use ELEVENLABS_API_KEY env var)")
 	subtitleCmd.Flags().StringVar(&subtitleDeepgramKey, "deepgram-api-key", "", "Deepgram API key (or use DEEPGRAM_API_KEY env var)")
-	subtitleCmd.Flags().StringVar(&subtitleProvider, "provider", "", "STT provider: deepgram or elevenlabs (default: deepgram if available)")
+	subtitleCmd.Flags().StringVar(&subtitleProvider, "provider", "", "STT provider: deepgram, elevenlabs, or whisper-mlx (default: deepgram if available)")
+	subtitleCmd.Flags().BoolVar(&subtitleLocal, "local", false, "Enable local STT providers (Whisper MLX); requires a local gRPC server running on Apple Silicon")
+	subtitleCmd.Flags().StringVar(&subtitleWhisperEndpoint, "whisper-endpoint", "", "Whisper MLX gRPC endpoint (default: unix:///tmp/omnivoice-whisper.sock)")
 	subtitleCmd.Flags().BoolVar(&subtitleIndividual, "individual", false, "Also generate individual subtitle files per slide")
 	subtitleCmd.Flags().BoolVar(&subtitleUseOriginalText, "use-original-text", false, "Use original transcript text with STT timestamps for proper capitalization")
 	subtitleCmd.Flags().StringVar(&subtitleTranscript, "transcript", "", "Path to transcript JSON file (required with --use-original-text)")
@@ -142,13 +146,14 @@ func runSubtitle(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Require at least one API key (unless using pre-saved timestamps)
-	if !hasTimestamps && elevenLabsKey == "" && deepgramKey == "" {
-		return fmt.Errorf("STT API key required: use --deepgram-api-key or --elevenlabs-api-key flag, or set DEEPGRAM_API_KEY or ELEVENLABS_API_KEY env var\n(or use --timestamps to load pre-saved timestamps)")
+	// Require at least one API key (unless using pre-saved timestamps or a local provider)
+	if !hasTimestamps && !subtitleLocal && elevenLabsKey == "" && deepgramKey == "" {
+		return fmt.Errorf("STT API key required: use --deepgram-api-key or --elevenlabs-api-key flag, set DEEPGRAM_API_KEY or ELEVENLABS_API_KEY env var, or use --local for Whisper MLX\n(or use --timestamps to load pre-saved timestamps)")
 	}
 
 	// If Deepgram is not available but ElevenLabs is, prompt user
-	if !hasTimestamps && deepgramKey == "" && elevenLabsKey != "" && subtitleProvider == "" {
+	// (skipped when using pre-saved timestamps or a local provider)
+	if !hasTimestamps && !subtitleLocal && deepgramKey == "" && elevenLabsKey != "" && subtitleProvider == "" {
 		fmt.Println("⚠️  DEEPGRAM_API_KEY not found. Deepgram is recommended for subtitle generation")
 		fmt.Println("   due to better word-level timestamp accuracy.")
 		fmt.Println()
@@ -236,8 +241,10 @@ func runSubtitle(cmd *cobra.Command, args []string) error {
 	// Create generator config
 	genConfig := tts.SubtitleGeneratorConfig{
 		ProviderConfig: omnistt.ProviderConfig{
-			ElevenLabsAPIKey: elevenLabsKey,
-			DeepgramAPIKey:   deepgramKey,
+			ElevenLabsAPIKey:     elevenLabsKey,
+			DeepgramAPIKey:       deepgramKey,
+			EnableLocalProviders: subtitleLocal,
+			WhisperMLXEndpoint:   subtitleWhisperEndpoint,
 		},
 		DefaultProvider:     subtitleProvider,
 		OutputDir:           subtitleOutputDir,

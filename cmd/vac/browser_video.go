@@ -9,7 +9,6 @@ import (
 	omnitts "github.com/grokify/videoascode/pkg/omnivoice/tts"
 	"github.com/grokify/videoascode/pkg/orchestrator"
 	"github.com/grokify/videoascode/pkg/source"
-	"github.com/grokify/videoascode/pkg/transcript"
 	"github.com/grokify/videoascode/pkg/tts"
 	"github.com/grokify/videoascode/pkg/video"
 	"github.com/spf13/cobra"
@@ -71,6 +70,8 @@ var (
 	bvFast             bool
 	bvLimit            int
 	bvLimitSteps       int
+	bvLocal            bool
+	bvF5TTSEndpoint    string
 )
 
 func init() {
@@ -79,7 +80,9 @@ func init() {
 	browserVideoCmd.Flags().StringVarP(&bvAudioDir, "audio-dir", "a", "", "Save audio tracks to this directory (per-language subdirs)")
 	browserVideoCmd.Flags().StringVar(&bvElevenLabsAPIKey, "elevenlabs-api-key", "", "ElevenLabs API key (or use ELEVENLABS_API_KEY env var)")
 	browserVideoCmd.Flags().StringVar(&bvDeepgramAPIKey, "deepgram-api-key", "", "Deepgram API key (or use DEEPGRAM_API_KEY env var)")
-	browserVideoCmd.Flags().StringVarP(&bvProvider, "provider", "p", "", "TTS provider: elevenlabs or deepgram (default: from config or auto-detect)")
+	browserVideoCmd.Flags().StringVarP(&bvProvider, "provider", "p", "", "TTS provider: elevenlabs, deepgram, or f5tts-mlx (default: from config or auto-detect)")
+	browserVideoCmd.Flags().BoolVar(&bvLocal, "local", false, "Enable local TTS providers (F5-TTS MLX); requires a local gRPC server running on Apple Silicon")
+	browserVideoCmd.Flags().StringVar(&bvF5TTSEndpoint, "f5tts-endpoint", "", "F5-TTS MLX gRPC endpoint (default: unix:///tmp/omnivoice-f5tts.sock)")
 	browserVideoCmd.Flags().StringVarP(&bvVoiceID, "voice", "v", "", "TTS voice ID (default: from config or provider default)")
 	browserVideoCmd.Flags().StringSliceVarP(&bvLanguages, "lang", "l", []string{"en-US"}, "Languages to generate (comma-separated)")
 	browserVideoCmd.Flags().IntVar(&bvWidth, "width", 1920, "Video width")
@@ -124,9 +127,9 @@ func runBrowserVideo(cmd *cobra.Command, args []string) error {
 		deepgramKey = os.Getenv("DEEPGRAM_API_KEY")
 	}
 
-	// Require at least one API key
-	if elevenLabsKey == "" && deepgramKey == "" {
-		return fmt.Errorf("TTS API key required: use --elevenlabs-api-key or --deepgram-api-key flag, or set ELEVENLABS_API_KEY or DEEPGRAM_API_KEY env var")
+	// Require at least one API key, unless using a local provider
+	if elevenLabsKey == "" && deepgramKey == "" && !bvLocal {
+		return fmt.Errorf("TTS API key required: use --elevenlabs-api-key or --deepgram-api-key flag, set ELEVENLABS_API_KEY or DEEPGRAM_API_KEY env var, or use --local for F5-TTS MLX")
 	}
 
 	// Determine provider
@@ -136,16 +139,18 @@ func runBrowserVideo(cmd *cobra.Command, args []string) error {
 		if cfg.DefaultVoice.Provider != "" {
 			provider = cfg.DefaultVoice.Provider
 		} else {
-			// Auto-detect based on available API keys
+			// Auto-detect based on available API keys, then local providers
 			if elevenLabsKey != "" {
 				provider = "elevenlabs"
 			} else if deepgramKey != "" {
 				provider = "deepgram"
+			} else if bvLocal {
+				provider = "f5tts-mlx"
 			}
 		}
 	}
 
-	// Validate provider has corresponding API key
+	// Validate provider has corresponding API key (local providers need no key)
 	switch provider {
 	case "deepgram":
 		if deepgramKey == "" {
@@ -155,8 +160,12 @@ func runBrowserVideo(cmd *cobra.Command, args []string) error {
 		if elevenLabsKey == "" {
 			return fmt.Errorf("ElevenLabs provider selected but no API key: use --elevenlabs-api-key or set ELEVENLABS_API_KEY env var")
 		}
+	case "f5tts-mlx":
+		if !bvLocal {
+			return fmt.Errorf("F5-TTS MLX provider selected but local providers not enabled: use --local")
+		}
 	default:
-		return fmt.Errorf("unknown TTS provider: %s (supported: elevenlabs, deepgram)", provider)
+		return fmt.Errorf("unknown TTS provider: %s (supported: elevenlabs, deepgram, f5tts-mlx)", provider)
 	}
 
 	// Validate config has browser segments
@@ -179,8 +188,10 @@ func runBrowserVideo(cmd *cobra.Command, args []string) error {
 
 	// Create TTS provider config with both keys
 	providerCfg := omnitts.ProviderConfig{
-		ElevenLabsAPIKey: elevenLabsKey,
-		DeepgramAPIKey:   deepgramKey,
+		ElevenLabsAPIKey:     elevenLabsKey,
+		DeepgramAPIKey:       deepgramKey,
+		EnableLocalProviders: bvLocal,
+		F5TTSMLXEndpoint:     bvF5TTSEndpoint,
 	}
 	factory := omnitts.NewFactory(providerCfg)
 	ttsProvider, err := factory.Get(provider)
@@ -205,16 +216,20 @@ func runBrowserVideo(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Create default voice config
-	defaultVoice := transcript.VoiceConfig{
-		Provider: provider,
-		VoiceID:  voiceID,
-	}
-	if provider == "elevenlabs" {
+	// Create default voice config, starting from the file config so fields
+	// like OutputFormat/SampleRate/Stability/etc. aren't silently dropped,
+	// then applying only the CLI-flag-or-auto-detected provider/voice ID.
+	defaultVoice := cfg.DefaultVoice
+	defaultVoice.Provider = provider
+	defaultVoice.VoiceID = voiceID
+	if provider == "elevenlabs" && defaultVoice.Model == "" {
 		defaultVoice.Model = "eleven_multilingual_v2"
 	}
 
 	ttsGen := tts.NewSegmentTTSGenerator(ttsProvider, defaultVoice)
+	if len(cfg.Pronunciations) > 0 {
+		ttsGen.SetPronunciations(&tts.PronunciationDictionary{Terms: cfg.Pronunciations})
+	}
 
 	// Create content source
 	contentSource := source.NewConfigSource(cfg)

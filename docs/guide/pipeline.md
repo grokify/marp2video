@@ -22,7 +22,8 @@ optional avatar presenter overlay stage.
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  STEP 2: Generate Audio (TTS)                                           │
-│  • Send voiceover text to ElevenLabs/OmniVoice                          │
+│  • Send voiceover text to a TTS provider via OmniVoice                  │
+│    (ElevenLabs, Deepgram, or local F5-TTS on Apple Silicon)             │
 │  • Receive MP3 audio files (one per slide)                              │
 │  • Output: workdir/audio/slide_000.mp3, slide_001.mp3, ...              │
 └─────────────────────────────────────────────────────────────────────────┘

@@ -32,12 +32,23 @@ vac can generate subtitle files (SRT/VTT) in two ways:
 ## How It Works
 
 1. **Audio input**: Reads MP3 files from `audio/{lang}/`
-2. **Speech-to-text**: Uses Deepgram STT for word-level timing
+2. **Speech-to-text**: Uses Deepgram (default) or local Whisper STT for word-level timing
 3. **Subtitle generation**: Creates SRT and VTT files with accurate timestamps
 
 ### Timing Accuracy
 
-The `subtitle` command uses Deepgram STT to transcribe the audio files and extract word-level timestamps. This provides accurate subtitle timing that matches the actual speech patterns, rather than estimating from text length.
+The `subtitle` command uses an STT provider to transcribe the audio files and extract word-level timestamps. This provides accurate subtitle timing that matches the actual speech patterns, rather than estimating from text length. Deepgram is the default; ElevenLabs and local Whisper are also supported via `--provider`.
+
+### Local, offline transcription (Whisper)
+
+On Apple Silicon you can transcribe entirely on-device with the local Whisper provider — no API key required:
+
+```bash
+# Requires the local Whisper server (see the Local Providers guide)
+vac subtitle --audio audio/en-US/ --lang en-US --provider whisper-mlx --local
+```
+
+BCP-47 locales like `en-US` are accepted; the region subtag is stripped automatically to the ISO-639-1 code Whisper expects (`en`). See [Local Providers](local-providers.md) for server setup.
 
 ## Command Reference
 
@@ -48,7 +59,9 @@ Flags:
   -a, --audio string        Audio directory containing manifest.json (required)
   -o, --output string       Output directory for subtitle files (default "subtitles")
   -l, --lang string         Language code (auto-detected from manifest if not specified)
-      --provider string     STT provider: deepgram or elevenlabs (default: deepgram)
+      --provider string     STT provider: deepgram, elevenlabs, or whisper-mlx (default: deepgram)
+      --local               Enable local STT providers (Whisper MLX; Apple Silicon)
+      --whisper-endpoint string  Whisper MLX gRPC endpoint (default unix:///tmp/omnivoice-whisper.sock)
       --individual          Also generate individual subtitle files per slide
 ```
 

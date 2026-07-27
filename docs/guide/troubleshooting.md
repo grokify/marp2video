@@ -106,6 +106,28 @@ def fix_cjk_spacing(text):
     return text
 ```
 
+## Local Provider Issues
+
+### "incompatible architecture (have 'arm64', need 'x86_64')"
+
+**Cause**: The Python/venv running the F5-TTS or Whisper MLX server is x86_64 (common when your shell is under Rosetta). MLX is arm64-only.
+
+**Solution**: Use `scripts/localvoice.sh`, which always launches Python under `arch -arm64`, or rebuild the venv with an arm64 Python. See [Local Providers](local-providers.md).
+
+### "connection refused" or missing socket
+
+**Symptom**: `vac ... --local` fails to reach `unix:///tmp/omnivoice-f5tts.sock` or `.../omnivoice-whisper.sock`.
+
+**Cause**: The local server isn't running.
+
+**Solution**: Check `scripts/localvoice.sh status` and the logs in `.localvoice-logs/`. Start with `scripts/localvoice.sh start -d`.
+
+### "Unsupported language: en-us"
+
+**Cause**: An older `whisper-mlx` build passed the BCP-47 locale straight to Whisper, which expects the ISO-639-1 code (`en`).
+
+**Solution**: Update to a build that normalizes locales automatically (`en-US` → `en`), or pass `--lang en`.
+
 ## Getting Help
 
 If you encounter issues not covered here:

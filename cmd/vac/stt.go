@@ -46,6 +46,8 @@ var (
 	sttElevenLabsAPIKey string
 	sttDeepgramAPIKey   string
 	sttProvider         string
+	sttLocal            bool
+	sttWhisperEndpoint  string
 )
 
 func init() {
@@ -55,7 +57,9 @@ func init() {
 	sttCmd.Flags().StringVarP(&sttLanguage, "lang", "l", "", "Language code for transcription (e.g., en-US)")
 	sttCmd.Flags().StringVar(&sttElevenLabsAPIKey, "elevenlabs-api-key", "", "ElevenLabs API key (or use ELEVENLABS_API_KEY env var)")
 	sttCmd.Flags().StringVar(&sttDeepgramAPIKey, "deepgram-api-key", "", "Deepgram API key (or use DEEPGRAM_API_KEY env var)")
-	sttCmd.Flags().StringVar(&sttProvider, "provider", "", "STT provider: elevenlabs or deepgram (default: deepgram if available)")
+	sttCmd.Flags().StringVar(&sttProvider, "provider", "", "STT provider: elevenlabs, deepgram, or whisper-mlx (default: deepgram if available)")
+	sttCmd.Flags().BoolVar(&sttLocal, "local", false, "Enable local STT providers (Whisper MLX); requires a local gRPC server running on Apple Silicon")
+	sttCmd.Flags().StringVar(&sttWhisperEndpoint, "whisper-endpoint", "", "Whisper MLX gRPC endpoint (default: unix:///tmp/omnivoice-whisper.sock)")
 
 	if err := sttCmd.MarkFlagRequired("manifest"); err != nil {
 		panic(err)
@@ -83,9 +87,9 @@ func runSTT(cmd *cobra.Command, args []string) error {
 		deepgramKey = os.Getenv("DEEPGRAM_API_KEY")
 	}
 
-	// Require at least one API key
-	if elevenLabsKey == "" && deepgramKey == "" {
-		return fmt.Errorf("STT API key required: use --elevenlabs-api-key or --deepgram-api-key flag, or set ELEVENLABS_API_KEY or DEEPGRAM_API_KEY env var")
+	// Require at least one API key, unless using a local provider
+	if elevenLabsKey == "" && deepgramKey == "" && !sttLocal {
+		return fmt.Errorf("STT API key required: use --elevenlabs-api-key or --deepgram-api-key flag, set ELEVENLABS_API_KEY or DEEPGRAM_API_KEY env var, or use --local for Whisper MLX")
 	}
 
 	// Load manifest
@@ -124,8 +128,10 @@ func runSTT(cmd *cobra.Command, args []string) error {
 	// Create generator config
 	genConfig := tts.SubtitleGeneratorConfig{
 		ProviderConfig: omnistt.ProviderConfig{
-			ElevenLabsAPIKey: elevenLabsKey,
-			DeepgramAPIKey:   deepgramKey,
+			ElevenLabsAPIKey:     elevenLabsKey,
+			DeepgramAPIKey:       deepgramKey,
+			EnableLocalProviders: sttLocal,
+			WhisperMLXEndpoint:   sttWhisperEndpoint,
 		},
 		DefaultProvider: sttProvider,
 		OutputDir:       sttOutputDir,

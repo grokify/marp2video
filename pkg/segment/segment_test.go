@@ -249,6 +249,37 @@ func TestBrowserSegment_LimitSteps(t *testing.T) {
 	}
 }
 
+// TestBrowserSegment_LimitSteps_TruncatesTranscripts guards against a
+// regression where LimitSteps truncated b.steps but GetVoiceovers, which
+// prefers segment-level transcripts whenever present, kept returning every
+// original transcript segment — so --limit-steps silently had no effect on
+// TTS generation/pacing/duration for transcript-based (multi-language)
+// segments.
+func TestBrowserSegment_LimitSteps_TruncatesTranscripts(t *testing.T) {
+	steps := []browser.Step{
+		{Action: browser.ActionWait},
+		{Action: browser.ActionKeypress},
+		{Action: browser.ActionKeypress},
+		{Action: browser.ActionKeypress},
+	}
+	seg := NewBrowserSegment(0, "Test", "https://example.com", steps)
+	seg.SetTranscripts(map[string]transcript.LanguageContent{
+		"en-US": {Segments: []transcript.Segment{
+			{Text: "slide one"}, {Text: "slide two"}, {Text: "slide three"}, {Text: "slide four"},
+		}},
+	})
+
+	seg.LimitSteps(2)
+
+	voiceovers := seg.GetVoiceovers("en-US")
+	if len(voiceovers) != 2 {
+		t.Fatalf("GetVoiceovers() after LimitSteps(2) returned %d items, want 2 (got: %+v)", len(voiceovers), voiceovers)
+	}
+	if voiceovers[0].Text != "slide one" || voiceovers[1].Text != "slide two" {
+		t.Errorf("GetVoiceovers() after LimitSteps(2) = %+v, want [slide one, slide two]", voiceovers)
+	}
+}
+
 func TestBrowserSegment_UpdateStepMinDurations(t *testing.T) {
 	steps := []browser.Step{
 		{Action: browser.ActionClick, Voiceover: "First"},
