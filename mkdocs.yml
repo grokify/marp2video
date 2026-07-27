@@ -82,12 +82,14 @@ nav:
   - Examples:
     - Overview: examples/index.md
     - Intro Presentation: examples/intro.md
+    - Local Avatar (Offline): examples/local-avatar.md
   - Comparisons:
     - vs marptalk: comparisons/marptalk.md
   - Development:
     - Architecture: development/architecture.md
     - Contributing: development/contributing.md
   - Releases:
+    - v0.9.0: releases/v0.9.0.md
     - v0.8.0: releases/v0.8.0.md
     - v0.7.0: releases/v0.7.0.md
     - v0.6.0: releases/v0.6.0.md
