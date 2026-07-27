@@ -29,6 +29,10 @@
          <lastmod>2026-07-27</lastmod>
     </url>
     <url>
+         <loc>https://grokify.github.io/videoascode/examples/local-avatar/</loc>
+         <lastmod>2026-07-27</lastmod>
+    </url>
+    <url>
          <loc>https://grokify.github.io/videoascode/getting-started/installation/</loc>
          <lastmod>2026-07-27</lastmod>
     </url>
@@ -130,6 +134,10 @@
     </url>
     <url>
          <loc>https://grokify.github.io/videoascode/releases/v0.8.0/</loc>
+         <lastmod>2026-07-27</lastmod>
+    </url>
+    <url>
+         <loc>https://grokify.github.io/videoascode/releases/v0.9.0/</loc>
          <lastmod>2026-07-27</lastmod>
     </url>
 </urlset>
