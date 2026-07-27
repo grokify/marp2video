@@ -10,7 +10,7 @@ require (
 	github.com/plexusone/omniavatar v0.2.0
 	github.com/plexusone/omniavatar-core v0.3.0
 	github.com/plexusone/omnivoice v0.13.0
-	github.com/plexusone/omnivoice-core v0.15.0
+	github.com/plexusone/omnivoice-core v0.16.0
 	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -94,6 +94,7 @@ require (
 	github.com/plexusone/omni-twilio v0.9.0 // indirect
 	github.com/plexusone/omnillm-core v0.18.0 // indirect
 	github.com/plexusone/tavus-go v0.3.0 // indirect
+	github.com/plexusone/terminology-spec v0.1.0 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.0 // indirect
@@ -134,7 +135,7 @@ require (
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260715232425-e75dac1f907d // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260715232425-e75dac1f907d // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260724162435-b2f20204f0df // indirect
 	google.golang.org/grpc v1.82.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -146,9 +147,3 @@ require (
 // Remove this replace directive when upgrading rod to a version that
 // supports newer fetchup releases.
 replace github.com/ysmood/fetchup => github.com/ysmood/fetchup v0.2.3
-
-// Local development: use the working tree of omnivoice-core so we pick up the
-// whisper-mlx TranscribeFile implementation (reads the file and delegates to
-// Transcribe) before it is published in a tagged release.
-// Remove this once a release of omnivoice-core with that fix is available.
-replace github.com/plexusone/omnivoice-core => ../../plexusone/omnivoice-core
