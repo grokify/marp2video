@@ -7,6 +7,22 @@
   "maintainers": ["grokify", "johncwang@gmail.com"],
   "releases": [
     {
+      "version": "v0.9.0",
+      "date": "2026-07-27",
+      "highlights": [
+        { "description": "Local avatar rendering via **LivePortrait + JoyVASA** — fully offline talking-head video on Apple Silicon" }
+      ],
+      "added": [
+        { "description": "`--provider liveportrait-joyvasa` support in avatar commands — local render provider with no API key required", "commit": "88c5b63" },
+        { "description": "`localProviders` map to skip API key validation for local providers", "commit": "88c5b63" },
+        { "description": "`examples/local-avatar/` — end-to-end offline demo (F5-TTS → local avatar → Whisper → composite)", "commit": "c78de2a" }
+      ],
+      "dependencies": [
+        { "description": "Upgrade `omniavatar` to v0.3.0 (local render provider)", "commit": "8fa8f9f" },
+        { "description": "Upgrade `omniavatar-core` to v0.4.0 (local render infrastructure)", "commit": "8fa8f9f" }
+      ]
+    },
+    {
       "version": "v0.8.0",
       "date": "2026-07-27",
       "commit": "86ce3dd",
