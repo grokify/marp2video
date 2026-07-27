@@ -7,8 +7,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grokify/ffutil v0.1.0
 	github.com/grokify/mogo v0.74.6
-	github.com/plexusone/omniavatar v0.2.0
-	github.com/plexusone/omniavatar-core v0.3.0
+	github.com/plexusone/omniavatar v0.3.0
+	github.com/plexusone/omniavatar-core v0.4.0
 	github.com/plexusone/omnivoice v0.13.0
 	github.com/plexusone/omnivoice-core v0.16.0
 	github.com/spf13/cobra v1.10.2

@@ -208,10 +208,10 @@ github.com/plexusone/omni-telnyx v0.4.0 h1:Qa/8GB0MAk7ryA742Rb+fgsbc/SsG/GZs6Arg
 github.com/plexusone/omni-telnyx v0.4.0/go.mod h1:DvXKIErUst6r0CYmHQKMh+si8YKdlh0n7x1467x3dLo=
 github.com/plexusone/omni-twilio v0.9.0 h1:Bumm1HVnN7EYpPgRTKz9h16SUjAZam59XIHD+yayTs8=
 github.com/plexusone/omni-twilio v0.9.0/go.mod h1:CI1n6fwjgaBl3i1Dcx4x9lTgIxdEBVwwb18kC4weo3k=
-github.com/plexusone/omniavatar v0.2.0 h1:XAhiJUoss+eYpiVTC7oAODerQaCSAQVT0+QT4ei2lXU=
-github.com/plexusone/omniavatar v0.2.0/go.mod h1:G5OfmfzqUaIbv3vXwAQ0geVenAADuwT+hDMh6ULN03w=
-github.com/plexusone/omniavatar-core v0.3.0 h1:ggfIbXnS16hUiNR0eittfhtZYD2X/5Dgo567wn7ciec=
-github.com/plexusone/omniavatar-core v0.3.0/go.mod h1:vp9MofUv8Z0LP8lBk1NsGPlO1XxcZkoJSTkH3wHoh6k=
+github.com/plexusone/omniavatar v0.3.0 h1:sJBQhFBlcMsML0qAwmM6465R8VOntgoYs02goVFJ1i0=
+github.com/plexusone/omniavatar v0.3.0/go.mod h1:hNTfW++og8q76iJumAa7G0v7BQgROfBGM+172/5hpz8=
+github.com/plexusone/omniavatar-core v0.4.0 h1:MkwDw41/tZYGsgfr3ZOZephOuYJpkvVHZ+j34uRIXDM=
+github.com/plexusone/omniavatar-core v0.4.0/go.mod h1:XrNAH+yTM8nl7VvMFCVCcMTk/+zBUKVBn8aUHyfO7Jc=
 github.com/plexusone/omnillm-core v0.18.0 h1:JnONiIe08W+83hsyxyFHSouk0jkBY2o7/SzvJxF3mYI=
 github.com/plexusone/omnillm-core v0.18.0/go.mod h1:180U/oa67fly3+T3h1sL/pBMvcjIKR+bvSEkAGnalMY=
 github.com/plexusone/omnivoice v0.13.0 h1:HU1Q2Qt740sJt+FgP1vSJI6Xpue1pA67Z5e6c4Wvs+A=
